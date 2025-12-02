@@ -194,129 +194,7 @@ export function AdminPage() {
   });
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [adminAuthError, setAdminAuthError] = useState('');
-
-  if (!isAdminAuthed) {
-    return (
-      <div className="app-root">
-        <main className="admin-page">
-          <div
-            style={{
-              minHeight: '100vh',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '24px',
-              background:
-                'radial-gradient(circle at top, #f5f7fb 0, #e8edf6 32%, #dde3f0 60%, #d7dee9 100%)',
-            }}
-          >
-            <div
-              style={{
-                maxWidth: 420,
-                width: '100%',
-                background: 'rgba(255, 255, 255, 0.98)',
-                borderRadius: 24,
-                padding: '28px 24px 24px',
-                boxShadow: '0 24px 60px rgba(15, 23, 42, 0.22)',
-                border: '1px solid rgba(15, 23, 42, 0.04)',
-              }}
-            >
-              <h1
-                style={{
-                  fontSize: '1.4rem',
-                  marginBottom: 8,
-                  color: '#111827',
-                }}
-              >
-                管理后台访问
-              </h1>
-              <p
-                style={{
-                  fontSize: '0.9rem',
-                  color: '#6b7280',
-                  marginBottom: 18,
-                }}
-              >
-                请输入管理员密码进入后台。
-              </p>
-              <div style={{ marginBottom: 12 }}>
-                <input
-                  type="password"
-                  value={adminPasswordInput}
-                  onChange={(e) => {
-                    setAdminPasswordInput(e.target.value);
-                    setAdminAuthError('');
-                  }}
-                  placeholder="管理员密码"
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: 10,
-                    border: '1px solid rgba(148, 163, 184, 0.5)',
-                    background: 'rgba(255,255,255,0.9)',
-                    color: '#111827',
-                    fontSize: '0.95rem',
-                    outline: 'none',
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      if (!adminPasswordInput) return;
-                      if (adminPasswordInput === adminPassword) {
-                        setIsAdminAuthed(true);
-                        try {
-                          localStorage.setItem('admin_authed', 'true');
-                        } catch {}
-                      } else {
-                        setAdminAuthError('密码不正确');
-                      }
-                    }
-                  }}
-                />
-              </div>
-              {adminAuthError && (
-                <div
-                  style={{
-                    fontSize: '0.85rem',
-                    color: '#ff6b6b',
-                    marginBottom: 12,
-                  }}
-                >
-                  {adminAuthError}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  if (!adminPasswordInput) return;
-                  if (adminPasswordInput === adminPassword) {
-                    setIsAdminAuthed(true);
-                    try {
-                      localStorage.setItem('admin_authed', 'true');
-                    } catch {}
-                  } else {
-                    setAdminAuthError('密码不正确');
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 999,
-                  border: 'none',
-                  background: 'var(--accent)',
-                  color: 'var(--bg)',
-                  fontSize: '0.95rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                进入后台
-              </button>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
   const addCameraOption = (value) => {
     const trimmed = (value || '').trim();
     if (!trimmed) return;
@@ -2042,7 +1920,154 @@ export function AdminPage() {
   // 总作品数 = 已审核通过的作品 + 待审核的作品（不包括内置示例）
   const totalPhotos = approvedCount + pendingReviewCount;
 
-  // 登录校验已在上方简化为默认登录，这里直接返回页面 JSX，避免三元表达式缺少 else 分支导致构建报错
+  if (!isAdminAuthed) {
+    return (
+      <div className="app-root">
+        <main className="admin-page">
+          <div
+            style={{
+              minHeight: '100vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px',
+              background:
+                'radial-gradient(circle at top, #f5f7fb 0, #e8edf6 32%, #dde3f0 60%, #d7dee9 100%)',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: 420,
+                width: '100%',
+                background: 'rgba(255, 255, 255, 0.98)',
+                borderRadius: 24,
+                padding: '28px 24px 24px',
+                boxShadow: '0 24px 60px rgba(15, 23, 42, 0.22)',
+                border: '1px solid rgba(15, 23, 42, 0.04)',
+              }}
+            >
+              <h1
+                style={{
+                  fontSize: '1.4rem',
+                  marginBottom: 8,
+                  color: '#111827',
+                }}
+              >
+                管理后台访问
+              </h1>
+              <p
+                style={{
+                  fontSize: '0.9rem',
+                  color: '#6b7280',
+                  marginBottom: 18,
+                }}
+              >
+                请输入管理员密码进入后台。
+              </p>
+              <div style={{ marginBottom: 12 }}>
+                <div
+                  style={{
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <input
+                    type={showAdminPassword ? 'text' : 'password'}
+                    value={adminPasswordInput}
+                    onChange={(e) => {
+                      setAdminPasswordInput(e.target.value);
+                      setAdminAuthError('');
+                    }}
+                    placeholder="管理员密码"
+                    style={{
+                      width: '100%',
+                      padding: '12px 40px 12px 14px',
+                      borderRadius: 10,
+                      border: '1px solid rgba(148, 163, 184, 0.5)',
+                      background: 'rgba(255,255,255,0.9)',
+                      color: '#111827',
+                      fontSize: '0.95rem',
+                      outline: 'none',
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (!adminPasswordInput) return;
+                        if (adminPasswordInput === adminPassword) {
+                          setIsAdminAuthed(true);
+                          try {
+                            localStorage.setItem('admin_authed', 'true');
+                          } catch {}
+                        } else {
+                          setAdminAuthError('密码不正确');
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword((v) => !v)}
+                    style={{
+                      position: 'absolute',
+                      right: 10,
+                      padding: '4px 6px',
+                      borderRadius: 999,
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#9ca3af',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    {showAdminPassword ? '隐藏' : '查看'}
+                  </button>
+                </div>
+              </div>
+              {adminAuthError && (
+                <div
+                  style={{
+                    fontSize: '0.85rem',
+                    color: '#ff6b6b',
+                    marginBottom: 12,
+                  }}
+                >
+                  {adminAuthError}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!adminPasswordInput) return;
+                  if (adminPasswordInput === adminPassword) {
+                    setIsAdminAuthed(true);
+                    try {
+                      localStorage.setItem('admin_authed', 'true');
+                    } catch {}
+                  } else {
+                    setAdminAuthError('密码不正确');
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'var(--accent)',
+                  color: 'var(--bg)',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                进入后台
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell admin-shell">
       <header className="app-header admin-header">
