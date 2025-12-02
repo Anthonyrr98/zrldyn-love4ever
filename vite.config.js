@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // GitHub Pages 仓库名路径
-  base: '/pic4pick/',
+  // 自定义域名使用根路径，GitHub Pages 子路径使用 '/pic4pick/'
+  base: '/',
   plugins: [react()],
 
   // 性能优化
