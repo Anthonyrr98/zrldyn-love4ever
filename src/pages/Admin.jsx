@@ -55,6 +55,8 @@ export function AdminPage() {
   const [webdavTestResult, setWebdavTestResult] = useState(null);
   const [webdavTesting, setWebdavTesting] = useState(false);
 
+  const adminPassword = getEnvValue('VITE_ADMIN_PASSWORD', 'pic4pick-admin');
+
   // === 原有状态 ===
   // 从 localStorage 加载数据
   const loadFromStorage = () => {
@@ -182,6 +184,137 @@ export function AdminPage() {
   });
   const [showCameraDropdown, setShowCameraDropdown] = useState(false);
   const [showLensDropdown, setShowLensDropdown] = useState(false);
+  const [isAdminAuthed, setIsAdminAuthed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem('admin_authed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [adminAuthError, setAdminAuthError] = useState('');
+
+  if (!isAdminAuthed) {
+    return (
+      <div className="app-root">
+        <main className="admin-page">
+          <div
+            style={{
+              minHeight: '100vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: 420,
+                width: '100%',
+                background: 'rgba(15, 16, 20, 0.96)',
+                borderRadius: 24,
+                padding: '28px 24px 24px',
+                boxShadow: '0 24px 60px rgba(0,0,0,0.65)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <h1
+                style={{
+                  fontSize: '1.4rem',
+                  marginBottom: 8,
+                  color: 'var(--text)',
+                }}
+              >
+                管理后台访问
+              </h1>
+              <p
+                style={{
+                  fontSize: '0.9rem',
+                  color: 'var(--muted)',
+                  marginBottom: 18,
+                }}
+              >
+                请输入管理员密码进入后台。
+              </p>
+              <div style={{ marginBottom: 12 }}>
+                <input
+                  type="password"
+                  value={adminPasswordInput}
+                  onChange={(e) => {
+                    setAdminPasswordInput(e.target.value);
+                    setAdminAuthError('');
+                  }}
+                  placeholder="管理员密码"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    background: 'rgba(0,0,0,0.35)',
+                    color: 'var(--text)',
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (!adminPasswordInput) return;
+                      if (adminPasswordInput === adminPassword) {
+                        setIsAdminAuthed(true);
+                        try {
+                          localStorage.setItem('admin_authed', 'true');
+                        } catch {}
+                      } else {
+                        setAdminAuthError('密码不正确');
+                      }
+                    }
+                  }}
+                />
+              </div>
+              {adminAuthError && (
+                <div
+                  style={{
+                    fontSize: '0.85rem',
+                    color: '#ff6b6b',
+                    marginBottom: 12,
+                  }}
+                >
+                  {adminAuthError}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!adminPasswordInput) return;
+                  if (adminPasswordInput === adminPassword) {
+                    setIsAdminAuthed(true);
+                    try {
+                      localStorage.setItem('admin_authed', 'true');
+                    } catch {}
+                  } else {
+                    setAdminAuthError('密码不正确');
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'var(--accent)',
+                  color: 'var(--bg)',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                进入后台
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
   const addCameraOption = (value) => {
     const trimmed = (value || '').trim();
     if (!trimmed) return;
@@ -2007,7 +2140,7 @@ export function AdminPage() {
         {submitMessage.text && (
           <div className={`admin-message ${submitMessage.type}`}>
             {submitMessage.text}
-          </div>
+                </div>
         )}
 
         {/* 标签页导航 */}
@@ -2129,135 +2262,135 @@ export function AdminPage() {
             {/* .env.local 配置覆盖 */}
             <section className="admin-settings-card">
               <div className="admin-settings-card-header">
-                <div>
+            <div>
                   <h2 className="admin-settings-card-title">运行时配置（覆盖 .env.local）</h2>
                   <p className="admin-settings-card-subtitle">
-                    这些值会保存到浏览器的 localStorage，用于覆盖 Supabase、地图等配置，适合快速切换测试环境。
-                  </p>
-                </div>
-                <div
+                这些值会保存到浏览器的 localStorage，用于覆盖 Supabase、地图等配置，适合快速切换测试环境。
+              </p>
+            </div>
+            <div
                   className="admin-settings-card-badge"
                   style={{ color: supabase ? 'var(--success)' : 'var(--warning)' }}
-                >
-                  {supabase ? 'Supabase 已启用' : 'Supabase 未配置，正在使用本地存储'}
-                </div>
-              </div>
+            >
+              {supabase ? 'Supabase 已启用' : 'Supabase 未配置，正在使用本地存储'}
+            </div>
+          </div>
 
-              {envConfigMessage.text && (
-                <div className={`admin-message ${envConfigMessage.type}`} style={{ marginBottom: '12px' }}>
-                  {envConfigMessage.text}
-                </div>
-              )}
+          {envConfigMessage.text && (
+            <div className={`admin-message ${envConfigMessage.type}`} style={{ marginBottom: '12px' }}>
+              {envConfigMessage.text}
+            </div>
+          )}
 
-              <div
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: '16px',
+              marginBottom: '16px',
+            }}
+          >
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Supabase URL</span>
+              <input
+                type="text"
+                name="supabaseUrl"
+                value={envConfigForm.supabaseUrl}
+                onChange={handleEnvConfigChange}
+                placeholder="https://xxxx.supabase.co"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                  gap: '16px',
-                  marginBottom: '16px',
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: 'var(--text)',
                 }}
-              >
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Supabase URL</span>
-                  <input
-                    type="text"
-                    name="supabaseUrl"
-                    value={envConfigForm.supabaseUrl}
-                    onChange={handleEnvConfigChange}
-                    placeholder="https://xxxx.supabase.co"
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      border: '1px solid var(--border)',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      color: 'var(--text)',
-                    }}
-                  />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Supabase anon key</span>
-                  <textarea
-                    name="supabaseAnonKey"
-                    value={envConfigForm.supabaseAnonKey}
-                    onChange={handleEnvConfigChange}
-                    placeholder="eyJhbGciOi..."
-                    rows={4}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      border: '1px solid var(--border)',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      color: 'var(--text)',
-                      resize: 'vertical',
-                    }}
-                  />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>高德地图 Key</span>
-                  <input
-                    type="text"
-                    name="amapKey"
-                    value={envConfigForm.amapKey}
-                    onChange={handleEnvConfigChange}
-                    placeholder="请输入高德 Web 服务 key"
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      border: '1px solid var(--border)',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      color: 'var(--text)',
-                    }}
-                  />
-                </label>
-              </div>
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Supabase anon key</span>
+              <textarea
+                name="supabaseAnonKey"
+                value={envConfigForm.supabaseAnonKey}
+                onChange={handleEnvConfigChange}
+                placeholder="eyJhbGciOi..."
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: 'var(--text)',
+                  resize: 'vertical',
+                }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>高德地图 Key</span>
+              <input
+                type="text"
+                name="amapKey"
+                value={envConfigForm.amapKey}
+                onChange={handleEnvConfigChange}
+                placeholder="请输入高德 Web 服务 key"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: 'var(--text)',
+                }}
+              />
+            </label>
+          </div>
 
               <div className="admin-settings-actions-row">
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={handleExportPhotos}
-                    style={{ minWidth: '140px' }}
-                  >
-                    导出 JSON 备份
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={handleImportClick}
-                    style={{ minWidth: '140px' }}
-                  >
-                    从 JSON 导入
-                  </button>
-                  <input
-                    ref={importFileInputRef}
-                    type="file"
-                    accept="application/json"
-                    style={{ display: 'none' }}
-                    onChange={handleImportPhotos}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={handleResetEnvConfig}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleExportPhotos}
+                style={{ minWidth: '140px' }}
+              >
+                导出 JSON 备份
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleImportClick}
+                style={{ minWidth: '140px' }}
+              >
+                从 JSON 导入
+              </button>
+              <input
+                ref={importFileInputRef}
+                type="file"
+                accept="application/json"
+                style={{ display: 'none' }}
+                onChange={handleImportPhotos}
+              />
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleResetEnvConfig}
                   style={{ minWidth: '120px' }}
-                >
-                  恢复默认
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleSaveEnvConfig}
+            >
+              恢复默认
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleSaveEnvConfig}
                   style={{ minWidth: '120px' }}
-                >
-                  保存配置
-                </button>
-              </div>
-            </section>
+            >
+              保存配置
+            </button>
+          </div>
+        </section>
 
             {/* 品牌 Logo 设置 */}
             <section className="admin-settings-card">
@@ -2297,7 +2430,7 @@ export function AdminPage() {
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <button type="button" className="btn-primary" onClick={handleLogoUploadClick}>
                       上传新 Logo
-                    </button>
+                </button>
                     <button type="button" className="btn-secondary" onClick={handleResetLogo} disabled={!brandLogo}>
                       使用默认
                     </button>
@@ -2415,7 +2548,7 @@ export function AdminPage() {
               </div>
 
               <div className="admin-settings-actions-row">
-                <button
+          <button
                   type="button"
                   className="btn-secondary"
                   onClick={() => {
@@ -2427,8 +2560,8 @@ export function AdminPage() {
                   style={{ minWidth: '120px' }}
                 >
                   恢复默认
-                </button>
-                <button
+          </button>
+          <button
                   type="button"
                   className="btn-primary"
                   onClick={async () => {
@@ -2454,11 +2587,11 @@ export function AdminPage() {
                 >
                   保存标题
                 </button>
-              </div>
+        </div>
             </section>
           </div>
         ) : (
-          <div className="admin-content-wrapper">
+        <div className="admin-content-wrapper">
             {activeTab === 'tools' && (
               <section>
                 <h2 className="form-section-title">图片压缩工具</h2>
@@ -2659,7 +2792,7 @@ export function AdminPage() {
                 )}
               </section>
             )}
-            {activeTab === 'upload' && (
+          {activeTab === 'upload' && (
             <form className="admin-upload-form" onSubmit={handleUpload}>
               <div className="form-section">
                 <h2 className="form-section-title">作品信息</h2>
@@ -2703,7 +2836,7 @@ export function AdminPage() {
                       type="date"
                       name="shotDate"
                       value={uploadForm.shotDate}
-                      onChange={handleFormChange}
+                    onChange={handleFormChange}
                       required
                     />
                   </div>
@@ -2763,8 +2896,8 @@ export function AdminPage() {
                       min="1"
                       max="10"
                       value={uploadForm.rating}
-                      onChange={handleFormChange}
-                    />
+                    onChange={handleFormChange}
+                  />
                   </div>
                   {/* 地理位置信息 */}
                   <div className="form-group full-width">
@@ -3073,7 +3206,7 @@ export function AdminPage() {
                   >
                     文件上传
                   </button>
-                </div>
+              </div>
 
                 {uploadForm.uploadMode === 'file' ? (
                   <div className="upload-dropzone-new">
