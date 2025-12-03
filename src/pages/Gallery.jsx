@@ -14,6 +14,7 @@ import {
   getStoredBrandLogo,
   saveBrandLogo,
   getStoredBrandText,
+  saveBrandText,
 } from '../utils/branding';
 
 // 从localStorage加载审核通过的作品
@@ -988,13 +989,21 @@ export function GalleryPage() {
           setBrandLogo(remoteLogo);
         }
 
-        // 只在初始化时从远端合并文案，不会影响后台正在编辑的状态
-        setBrandText((prev) => ({
-          siteTitle: record.site_title || prev.siteTitle,
-          siteSubtitle: record.site_subtitle || prev.siteSubtitle,
-          adminTitle: record.admin_title || prev.adminTitle,
-          adminSubtitle: record.admin_subtitle || prev.adminSubtitle,
-        }));
+        // 只在初始化时从远端合并文案，并同时写回 localStorage，保证下次一打开就能立刻用你自己的标题
+        setBrandText((prev) => {
+          const merged = {
+            siteTitle: record.site_title || prev.siteTitle,
+            siteSubtitle: record.site_subtitle || prev.siteSubtitle,
+            adminTitle: record.admin_title || prev.adminTitle,
+            adminSubtitle: record.admin_subtitle || prev.adminSubtitle,
+          };
+          try {
+            saveBrandText(merged);
+          } catch (e) {
+            console.error('保存品牌文案到本地失败:', e);
+          }
+          return merged;
+        });
       } catch (error) {
         console.error('加载云端品牌配置失败:', error);
       }
