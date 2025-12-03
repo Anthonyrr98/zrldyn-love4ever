@@ -467,8 +467,8 @@ const explorePins = [
 ];
 
 const tabs = [
-  { id: 'featured', label: '精选' },
   { id: 'latest', label: '最新' },
+  { id: 'featured', label: '精选' },
   { id: 'random', label: '随览' },
   { id: 'nearby', label: '附近' },
   { id: 'far', label: '远方' },
@@ -537,7 +537,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 export function GalleryPage() {
   const supabase = getSupabaseClient();
   const isSupabaseReady = Boolean(supabase);
-  const [activeFilter, setActiveFilter] = useState('featured');
+  const [activeFilter, setActiveFilter] = useState('latest');
   // 记住上次使用的视图：刷新后仍然停留在“发现”或“图库”
   const [activeView, setActiveView] = useState(() => {
     if (typeof window === 'undefined') return 'gallery-view';
@@ -1082,11 +1082,29 @@ export function GalleryPage() {
   const filteredPhotos = useMemo(() => {
     if (!allPhotos || allPhotos.length === 0) return [];
 
-    // 帮助函数：按创建时间从新到旧排序
+    // 帮助函数：按时间从新到旧排序（优先拍摄日期，其次创建时间，最后按 id 兜底）
     const sortByLatest = (list) =>
       [...list].sort((a, b) => {
-        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const getTime = (p) => {
+          if (p.shotDate) {
+            const t = new Date(p.shotDate).getTime();
+            if (!Number.isNaN(t)) return t;
+          }
+          if (p.createdAt) {
+            const t = new Date(p.createdAt).getTime();
+            if (!Number.isNaN(t)) return t;
+          }
+          // 如果没有时间，就尝试用数字 id 作为大致顺序
+          if (typeof p.id === 'number') return p.id;
+          if (typeof p.id === 'string') {
+            const n = Number(p.id);
+            if (!Number.isNaN(n)) return n;
+          }
+          return 0;
+        };
+
+        const aTime = getTime(a);
+        const bTime = getTime(b);
         return bTime - aTime;
       });
 
