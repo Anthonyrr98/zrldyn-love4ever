@@ -225,18 +225,73 @@ app.post('/api/upload/oss', upload.single('file'), async (req, res) => {
 });
 
 // 从 OSS 删除文件
-app.delete('/api/upload/oss/:filename', async (req, res) => {
+app.delete('/api/upload/oss/:filename(*)', async (req, res) => {
   try {
     if (!ossClient) {
       return res.status(500).json({ error: 'OSS 客户端未配置' });
     }
 
+    // filename 可能包含路径，例如 "origin/filename.jpg" 或 "ore/filename.jpg"
     const filename = req.params.filename;
-    const objectKey = `pic4pick/${filename}`;
+    console.log('收到删除请求，filename:', filename);
     
-    await ossClient.delete(objectKey);
+    // 构建 objectKey
+    let objectKeys = [];
     
-    res.json({ success: true, message: '从 OSS 删除成功' });
+    if (filename.includes('/')) {
+      // 已经包含路径，直接使用
+      objectKeys.push(filename);
+    } else {
+      // 只有文件名，尝试 origin/ 和 ore/ 两个路径
+      objectKeys.push(`origin/${filename}`);
+      objectKeys.push(`ore/${filename}`);
+      // 也尝试旧的 pic4pick/ 路径（向后兼容）
+      objectKeys.push(`pic4pick/${filename}`);
+    }
+    
+    // 尝试删除所有可能的路径
+    const deleteResults = [];
+    for (const objectKey of objectKeys) {
+      try {
+        await ossClient.delete(objectKey);
+        deleteResults.push({ objectKey, success: true });
+        console.log('成功删除OSS文件:', objectKey);
+      } catch (deleteError) {
+        // 如果文件不存在，忽略错误（可能已经删除或路径不对）
+        if (deleteError.code === 'NoSuchKey' || deleteError.status === 404) {
+          deleteResults.push({ objectKey, success: false, reason: '文件不存在' });
+          console.log('文件不存在，跳过:', objectKey);
+        } else {
+          deleteResults.push({ objectKey, success: false, error: deleteError.message });
+          console.error('删除OSS文件失败:', objectKey, deleteError);
+        }
+      }
+    }
+    
+    // 如果至少有一个删除成功，返回成功
+    const hasSuccess = deleteResults.some(r => r.success);
+    if (hasSuccess) {
+      res.json({ 
+        success: true, 
+        message: '从 OSS 删除成功',
+        deleted: deleteResults.filter(r => r.success).map(r => r.objectKey)
+      });
+    } else {
+      // 所有删除都失败，但如果是文件不存在，也算成功（可能已经删除过了）
+      const allNotFound = deleteResults.every(r => r.reason === '文件不存在');
+      if (allNotFound) {
+        res.json({ 
+          success: true, 
+          message: '文件不存在（可能已删除）',
+          deleted: []
+        });
+      } else {
+        res.status(500).json({ 
+          error: '删除失败', 
+          details: deleteResults 
+        });
+      }
+    }
   } catch (error) {
     console.error('OSS 删除错误:', error);
     res.status(500).json({ error: error.message || '删除失败' });

@@ -2227,11 +2227,160 @@ export function AdminPage() {
     setEditSelectedLocation(null);
   };
 
+  // 从OSS URL中提取文件名和路径
+  const extractOSSFileInfo = (url) => {
+    if (!url || typeof url !== 'string') return null;
+    
+    // OSS URL格式可能是：
+    // 1. https://bucket.region.aliyuncs.com/origin/filename.jpg (服务器端上传的格式)
+    // 2. https://bucket.region.aliyuncs.com/ore/filename.jpg (缩略图)
+    // 3. https://bucket.region.aliyuncs.com/pic4pick/filename.jpg (旧格式)
+    // 4. https://bucket.region.aliyuncs.com/pic4pick/origin/filename.jpg
+    // 5. https://bucket.region.aliyuncs.com/pic4pick/ore/filename.jpg
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      
+      console.log('解析OSS URL:', url, 'pathname:', pathname);
+      
+      // 先尝试匹配 pic4pick/ 前缀的路径
+      let match = pathname.match(/pic4pick\/(.+)$/);
+      if (match) {
+        const fullPath = match[1];
+        const parts = fullPath.split('/');
+        const filename = parts[parts.length - 1];
+        const subDir = parts.length > 1 ? parts[0] : null;
+        const result = { filename, subDir, fullPath };
+        console.log('匹配到pic4pick路径:', result);
+        return result;
+      }
+      
+      // 如果没有pic4pick前缀，直接匹配路径（服务器端上传的格式）
+      // 路径格式：/origin/filename.jpg 或 /ore/filename.jpg
+      match = pathname.match(/^\/(origin|ore)\/(.+)$/);
+      if (match) {
+        const subDir = match[1]; // origin 或 ore
+        const filename = match[2];
+        const result = { filename, subDir, fullPath: `${subDir}/${filename}` };
+        console.log('匹配到直接路径:', result);
+        return result;
+      }
+      
+      // 如果都不匹配，尝试直接取文件名
+      const parts = pathname.split('/').filter(p => p);
+      if (parts.length > 0) {
+        const filename = parts[parts.length - 1];
+        const subDir = parts.length > 1 ? parts[parts.length - 2] : null;
+        const result = { filename, subDir, fullPath: subDir ? `${subDir}/${filename}` : filename };
+        console.log('使用默认解析:', result);
+        return result;
+      }
+      
+      console.warn('无法解析OSS URL路径:', pathname);
+      return null;
+    } catch (error) {
+      console.error('解析OSS URL失败:', error, url);
+      return null;
+    }
+  };
+
+  // 删除OSS中的文件
+  const deleteOSSFile = async (url) => {
+    if (!url || typeof url !== 'string') return;
+    
+    // 检查是否是OSS URL
+    if (!url.includes('.aliyuncs.com')) {
+      console.log('不是OSS URL，跳过删除:', url);
+      return; // 不是OSS URL，跳过
+    }
+    
+    const fileInfo = extractOSSFileInfo(url);
+    if (!fileInfo || !fileInfo.filename) {
+      console.warn('无法从URL提取文件信息:', url);
+      return;
+    }
+    
+    try {
+      const backendUrl = localStorage.getItem('aliyun_oss_backend_url') || 'http://localhost:3002';
+      // 构建要删除的路径
+      // 如果文件在子目录中（origin 或 ore），传递完整路径
+      // 否则只传递文件名，让服务器端尝试多个路径
+      const pathToDelete = fileInfo.subDir ? `${fileInfo.subDir}/${fileInfo.filename}` : fileInfo.filename;
+      const deleteUrl = `${backendUrl}/api/upload/oss/${encodeURIComponent(pathToDelete)}`;
+      
+      console.log('准备删除OSS文件:', { url, pathToDelete, deleteUrl });
+      
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('OSS文件删除成功:', pathToDelete, result);
+      } else {
+        const errorText = await response.text();
+        console.error('OSS文件删除失败:', pathToDelete, response.status, errorText);
+      }
+    } catch (error) {
+      console.error('删除OSS文件时出错:', error);
+      // 不抛出错误，避免影响主流程
+    }
+  };
+
   // 删除作品
   const handleDelete = async () => {
     if (!editingPhotoId) return;
     
     if (window.confirm('确定要删除这个作品吗？此操作不可恢复。')) {
+      // 先获取照片信息，以便删除OSS文件
+      let photoToDelete = null;
+      
+      if (supabase) {
+        try {
+          // 从Supabase获取照片信息
+          const { data, error: fetchError } = await supabase
+            .from('photos')
+            .select('image_url, thumbnail_url')
+            .eq('id', editingPhotoId)
+            .single();
+          
+          if (!fetchError && data) {
+            photoToDelete = data;
+          }
+        } catch (error) {
+          console.error('获取照片信息失败:', error);
+        }
+      } else {
+        // 从本地存储中查找照片
+        const allPhotos = [
+          ...adminUploads,
+          ...approvedPhotos,
+          ...rejectedPhotos,
+        ];
+        photoToDelete = allPhotos.find((p) => p.id === editingPhotoId);
+      }
+      
+      // 删除OSS中的文件
+      if (photoToDelete) {
+        const imageUrl = photoToDelete.image_url || photoToDelete.image || photoToDelete.preview;
+        const thumbnailUrl = photoToDelete.thumbnail_url || photoToDelete.thumbnail;
+        
+        console.log('准备删除OSS文件:', { imageUrl, thumbnailUrl, photoToDelete });
+        
+        // 删除原图
+        if (imageUrl) {
+          await deleteOSSFile(imageUrl);
+        }
+        
+        // 删除缩略图（如果存在且与原图不同）
+        if (thumbnailUrl && thumbnailUrl !== imageUrl) {
+          await deleteOSSFile(thumbnailUrl);
+        }
+      } else {
+        console.warn('未找到要删除的照片信息，editingPhotoId:', editingPhotoId);
+      }
+      
+      // 删除数据库记录
       if (supabase) {
         try {
           await supabase.from('photos').delete().eq('id', editingPhotoId);
