@@ -327,7 +327,7 @@ const provinceCityData = [
   { id: 'guizhou', title: '贵州', cities: ['贵阳', '遵义', '兴义'] },
   { id: 'yunnan', title: '云南', cities: ['昆明', '大理', '西双版纳'] },
   { id: 'shaanxi', title: '陕西', cities: ['西安', '榆林', '汉中'] },
-  { id: 'gansu', title: '甘肃', cities: ['兰州', '张掖', '敦煌'] },
+  { id: 'gansu', title: '甘肃', cities: ['兰州', '张掖', '敦煌', '永登县'] },
   { id: 'qinghai', title: '青海', cities: ['西宁', '德令哈', '玉树'] },
   { id: 'neimenggu', title: '内蒙古', cities: ['呼和浩特', '呼伦贝尔', '鄂尔多斯'] },
   { id: 'xinjiang', title: '新疆', cities: ['乌鲁木齐', '喀什', '伊犁'] },
@@ -421,6 +421,7 @@ const cityMeta = {
   '兰州': { lat: 36.0611, lng: 103.8343 },
   '张掖': { lat: 38.9259, lng: 100.4498 },
   '敦煌': { lat: 40.1421, lng: 94.661 },
+  '永登县': { lat: 36.7374, lng: 103.2624 },
   '西宁': { lat: 36.6171, lng: 101.7782 },
   '德令哈': { lat: 37.3746, lng: 97.3615 },
   '玉树': { lat: 33.001, lng: 97.0133 },
@@ -624,32 +625,154 @@ export function GalleryPage() {
     [likedPhotoIds, supabase, setApprovedPhotos],
   );
 
+  // 根据经纬度判断省份（简化版，使用主要城市的经纬度范围）
+  const getProvinceFromCoords = useCallback((lat, lng) => {
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) return null;
+    
+    // 使用省份主要城市的经纬度范围进行粗略判断
+    // 这是一个简化方案，更精确的方案需要使用省份边界数据
+    const provinceRanges = [
+      { id: 'beijing', title: '北京', latRange: [39.4, 40.2], lngRange: [116.0, 116.8] },
+      { id: 'tianjin', title: '天津', latRange: [38.5, 40.0], lngRange: [116.7, 118.0] },
+      { id: 'shanghai', title: '上海', latRange: [30.7, 31.9], lngRange: [120.8, 122.0] },
+      { id: 'chongqing', title: '重庆', latRange: [28.1, 32.2], lngRange: [105.2, 110.2] },
+      { id: 'hebei', title: '河北', latRange: [36.0, 42.6], lngRange: [113.4, 119.8] },
+      { id: 'shanxi', title: '山西', latRange: [34.5, 40.7], lngRange: [110.2, 114.6] },
+      { id: 'liaoning', title: '辽宁', latRange: [38.7, 43.4], lngRange: [118.8, 125.5] },
+      { id: 'jilin', title: '吉林', latRange: [40.8, 46.3], lngRange: [121.3, 131.2] },
+      { id: 'heilongjiang', title: '黑龙江', latRange: [43.4, 53.6], lngRange: [121.1, 135.1] },
+      { id: 'jiangsu', title: '江苏', latRange: [30.7, 35.1], lngRange: [116.2, 121.9] },
+      { id: 'zhejiang', title: '浙江', latRange: [27.0, 31.5], lngRange: [118.0, 123.0] },
+      { id: 'anhui', title: '安徽', latRange: [29.4, 34.7], lngRange: [114.9, 119.8] },
+      { id: 'fujian', title: '福建', latRange: [23.5, 28.3], lngRange: [115.8, 120.7] },
+      { id: 'jiangxi', title: '江西', latRange: [24.3, 30.0], lngRange: [113.5, 118.5] },
+      { id: 'shandong', title: '山东', latRange: [34.4, 38.4], lngRange: [114.3, 122.7] },
+      { id: 'henan', title: '河南', latRange: [31.2, 36.4], lngRange: [110.3, 116.6] },
+      { id: 'hubei', title: '湖北', latRange: [29.0, 33.3], lngRange: [108.2, 116.1] },
+      { id: 'hunan', title: '湖南', latRange: [24.6, 30.1], lngRange: [108.8, 114.3] },
+      { id: 'guangdong', title: '广东', latRange: [20.1, 25.5], lngRange: [109.6, 117.3] },
+      { id: 'guangxi', title: '广西', latRange: [20.9, 26.4], lngRange: [104.3, 112.0] },
+      { id: 'hainan', title: '海南', latRange: [18.1, 20.1], lngRange: [108.6, 111.0] },
+      { id: 'sichuan', title: '四川', latRange: [26.0, 34.3], lngRange: [97.3, 108.5] },
+      { id: 'guizhou', title: '贵州', latRange: [24.6, 29.2], lngRange: [103.6, 109.3] },
+      { id: 'yunnan', title: '云南', latRange: [21.1, 29.2], lngRange: [97.5, 106.2] },
+      { id: 'shaanxi', title: '陕西', latRange: [31.4, 39.6], lngRange: [105.5, 111.3] },
+      { id: 'gansu', title: '甘肃', latRange: [32.1, 42.8], lngRange: [92.3, 108.7] },
+      { id: 'qinghai', title: '青海', latRange: [31.6, 39.2], lngRange: [89.4, 103.0] },
+      { id: 'neimenggu', title: '内蒙古', latRange: [37.4, 53.3], lngRange: [97.2, 126.0] },
+      { id: 'xinjiang', title: '新疆', latRange: [34.3, 49.2], lngRange: [73.5, 96.4] },
+      { id: 'ningxia', title: '宁夏', latRange: [35.2, 39.4], lngRange: [104.2, 107.6] },
+      { id: 'xizang', title: '西藏', latRange: [26.9, 36.5], lngRange: [78.4, 99.1] },
+      { id: 'taiwan', title: '台湾', latRange: [21.9, 25.3], lngRange: [119.3, 122.0] },
+      { id: 'hongkong', title: '香港', latRange: [22.1, 22.6], lngRange: [113.8, 114.5] },
+      { id: 'macao', title: '澳门', latRange: [22.1, 22.2], lngRange: [113.5, 113.6] },
+    ];
+    
+    for (const province of provinceRanges) {
+      if (
+        lat >= province.latRange[0] && lat <= province.latRange[1] &&
+        lng >= province.lngRange[0] && lng <= province.lngRange[1]
+      ) {
+        return province;
+      }
+    }
+    return null;
+  }, []);
+
+  // 从文本中提取省、市、县名
+  const extractLocationParts = useCallback((location, country) => {
+    if (!location && !country) return { province: null, city: null, county: null };
+    
+    const text = `${country || ''}${location || ''}`;
+    const provinces = provinceCityData.map(p => p.title);
+    
+    let province = null;
+    let city = null;
+    let county = null;
+    
+    // 查找省份
+    for (const p of provinces) {
+      if (text.includes(p)) {
+        province = provinceCityData.find(pr => pr.title === p);
+        break;
+      }
+    }
+    
+    // 提取县名（包含"县"、"区"、"市"的地名）
+    const countyMatch = text.match(/([\u4e00-\u9fa5]+(?:县|区|市|镇|乡))/);
+    if (countyMatch) {
+      county = countyMatch[1];
+    }
+    
+    // 如果没有找到县，尝试提取市名
+    if (!county) {
+      const cityMatch = text.match(/([\u4e00-\u9fa5]+(?:市|州))/);
+      if (cityMatch) {
+        city = cityMatch[1];
+      }
+    }
+    
+    return { province, city, county };
+  }, []);
+
   const cityPhotoMap = useMemo(() => {
     const map = new Map();
     if (!approvedPhotos || approvedPhotos.length === 0) return map;
 
     approvedPhotos.forEach((photo) => {
-      const location = normalizeText(photo.location);
-      const country = normalizeText(photo.country);
-
-      provinceCityData.forEach((province) => {
-        const targets = [...province.cities];
-        if (MUNICIPALITY_PROVINCES.has(province.id)) {
-          targets.push(province.title);
+      let province = null;
+      let cityName = null;
+      
+      // 优先使用经纬度判断省份和提取城市信息
+      if (photo.latitude != null && photo.longitude != null) {
+        const lat = Number(photo.latitude);
+        const lng = Number(photo.longitude);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          province = getProvinceFromCoords(lat, lng);
+          // 使用照片的经纬度作为城市坐标
+          cityName = photo.location || photo.country || '未知地点';
         }
-
-        targets.forEach((cityName) => {
-          const cityLower = normalizeText(cityName);
-          if (!cityLower) return;
-          if (location.includes(cityLower) || country.includes(cityLower)) {
-            const key = `${province.id}-${cityName}`;
-            if (!map.has(key)) map.set(key, []);
-            map.get(key).push(photo);
+      }
+      
+      // 如果没有经纬度或无法判断省份，使用文本解析
+      if (!province) {
+        const parts = extractLocationParts(photo.location, photo.country);
+        province = parts.province;
+        cityName = parts.county || parts.city || photo.location || photo.country || '未知地点';
+      }
+      
+      // 如果还是找不到，尝试匹配预定义的城市列表（向后兼容）
+      if (!province) {
+        const location = normalizeText(photo.location);
+        const country = normalizeText(photo.country);
+        
+        for (const p of provinceCityData) {
+          const targets = [...p.cities];
+          if (MUNICIPALITY_PROVINCES.has(p.id)) {
+            targets.push(p.title);
           }
-        });
-      });
+          
+          for (const city of targets) {
+            const cityLower = normalizeText(city);
+            if (location.includes(cityLower) || country.includes(cityLower)) {
+              province = p;
+              cityName = city;
+              break;
+            }
+          }
+          if (province) break;
+        }
+      }
+      
+      // 如果找到了省份，添加到地图中
+      if (province) {
+        const key = `${province.id}-${cityName}`;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(photo);
+      }
     });
 
+    // 按时间排序
     map.forEach((photos) =>
       photos.sort((a, b) => {
         const at = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -659,33 +782,58 @@ export function GalleryPage() {
     );
 
     return map;
-  }, [approvedPhotos]);
+  }, [approvedPhotos, getProvinceFromCoords, extractLocationParts]);
 
   const curationGroups = useMemo(() => {
+    // 动态构建省份-城市分组
+    const provinceMap = new Map();
+    
+    // 从 cityPhotoMap 中提取所有省份和城市
+    cityPhotoMap.forEach((photos, key) => {
+      const [provinceId, cityName] = key.split('-');
+      const province = provinceCityData.find(p => p.id === provinceId);
+      if (!province) return;
+      
+      if (!provinceMap.has(provinceId)) {
+        provinceMap.set(provinceId, {
+          id: provinceId,
+          title: province.title,
+          cities: new Map(),
+        });
+      }
+      
+      const provinceData = provinceMap.get(provinceId);
+      if (!provinceData.cities.has(cityName)) {
+        // 获取城市坐标：优先使用照片的经纬度，其次使用预定义的坐标
+        let coords = cityMeta[cityName] || {};
+        if (!coords.lat && photos.length > 0 && photos[0].latitude && photos[0].longitude) {
+          coords = {
+            lat: Number(photos[0].latitude),
+            lng: Number(photos[0].longitude),
+          };
+        }
+        
+        provinceData.cities.set(cityName, {
+          id: key,
+          label: cityName,
+          image: photos[0].thumbnail || photos[0].image,
+          photoCount: photos.length,
+          lat: coords.lat ?? null,
+          lng: coords.lng ?? null,
+          provinceId: provinceId,
+        });
+      }
+    });
+    
+    // 转换为数组格式，并保持省份顺序
     return provinceCityData
       .map((province) => {
-        const targets = [...province.cities];
-        if (MUNICIPALITY_PROVINCES.has(province.id)) targets.push(province.title);
-
-        const items = targets
-          .map((cityName) => {
-            const key = `${province.id}-${cityName}`;
-            const cityPhotos = cityPhotoMap.get(key);
-            if (!cityPhotos || cityPhotos.length === 0) return null;
-            const coords = cityMeta[cityName] || {};
-            return {
-              id: key,
-              label: cityName,
-              image: cityPhotos[0].thumbnail || cityPhotos[0].image,
-              photoCount: cityPhotos.length,
-              lat: coords.lat ?? null,
-              lng: coords.lng ?? null,
-              provinceId: province.id,
-            };
-          })
-          .filter(Boolean);
-
-        if (items.length === 0) return null;
+        const provinceData = provinceMap.get(province.id);
+        if (!provinceData) return null;
+        
+        const items = Array.from(provinceData.cities.values())
+          .sort((a, b) => b.photoCount - a.photoCount); // 按照片数量排序
+        
         return {
           id: province.id,
           title: province.title,
@@ -824,7 +972,17 @@ export function GalleryPage() {
         }
 
         if (isMounted) {
-          setApprovedPhotos((data || []).map(mapSupabaseRowToGalleryPhoto));
+          const mapped = (data || []).map(mapSupabaseRowToGalleryPhoto);
+          console.log(`从 Supabase 加载了 ${mapped.length} 张已审核通过的照片`);
+          // 调试：检查是否有永登县的照片
+          const yongdengPhotos = mapped.filter(p => 
+            (p.location && p.location.includes('永登')) || 
+            (p.country && p.country.includes('永登'))
+          );
+          if (yongdengPhotos.length > 0) {
+            console.log('找到永登县相关照片:', yongdengPhotos);
+          }
+          setApprovedPhotos(mapped);
           setSupabaseError('');
         }
       } catch (error) {
