@@ -2664,11 +2664,12 @@ export function AdminPage() {
                         const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
                         const originalFilename = file.name || `image.${ext}`;
                         const compressedFilename = `${nameWithoutExt}pre.${ext}`;
+
                         // 预览压缩结果
                         const compressedUrl = compressed instanceof File ? URL.createObjectURL(compressed) : '';
                         setToolCompressedPreview(compressedUrl);
 
-                        // 在浏览器中触发两次下载，让用户保存到同一文件夹
+                        // 在浏览器中触发下载，让用户保存到同一文件夹
                         const triggerDownload = (blobFile, filename) => {
                           const url = blobFile instanceof File ? URL.createObjectURL(blobFile) : '';
                           const a = document.createElement('a');
@@ -2680,12 +2681,150 @@ export function AdminPage() {
                           setTimeout(() => URL.revokeObjectURL(url), 2000);
                         };
 
+                        // 1) 原图
                         triggerDownload(file, originalFilename);
+                        // 2) 压缩图
                         triggerDownload(compressed, compressedFilename);
+
+                        // 3) 读取 EXIF 参数并生成同名 txt（无论是否有 EXIF 都生成）
+                        let focal = '';
+                        let fNumber = '';
+                        let shutter = '';
+                        let iso = '';
+                        let camera = '';
+                        let lens = '';
+                        let shotDate = '';
+
+                        try {
+                          // 不传 translateKeys，让 exifr 使用默认的字段名（有些是 camelCase）
+                          const exif = await exifr.parse(file);
+
+                          // 焦距：优先 35mm 等效，其次实际焦距
+                          const rawFocal =
+                            exif?.FocalLengthIn35mm ||
+                            exif?.focalLengthIn35mm ||
+                            exif?.FocalLength ||
+                            exif?.focalLength ||
+                            exif?.LensFocalLength ||
+                            exif?.lensFocalLength ||
+                            null;
+                          if (typeof rawFocal === 'number') {
+                            focal = `${Math.round(rawFocal)}mm`;
+                          } else if (rawFocal != null && rawFocal.toString) {
+                            focal = `${rawFocal.toString()}mm`;
+                          }
+
+                          // 光圈：FNumber 或 ApertureValue
+                          const rawFNumber =
+                            exif?.FNumber ||
+                            exif?.fNumber ||
+                            exif?.ApertureValue ||
+                            exif?.apertureValue ||
+                            null;
+                          if (typeof rawFNumber === 'number') {
+                            fNumber = `f/${rawFNumber.toFixed(1)}`;
+                          } else if (rawFNumber != null && rawFNumber.toString) {
+                            fNumber = `f/${rawFNumber.toString()}`;
+                          }
+
+                          // 快门：ExposureTime 或 ShutterSpeedValue
+                          const rawExposure =
+                            exif?.ExposureTime ||
+                            exif?.exposureTime ||
+                            exif?.ShutterSpeedValue ||
+                            exif?.shutterSpeedValue ||
+                            null;
+                          if (typeof rawExposure === 'number') {
+                            if (rawExposure >= 1) {
+                              shutter = `${rawExposure.toFixed(1)}s`;
+                            } else {
+                              const denom = Math.round(1 / rawExposure);
+                              shutter = `1/${denom}s`;
+                            }
+                          } else if (rawExposure != null && rawExposure.toString) {
+                            shutter = rawExposure.toString();
+                          }
+
+                          // ISO：多个常见字段兜底
+                          iso =
+                            exif?.ISO ||
+                            exif?.iso ||
+                            exif?.ISOSpeedRatings ||
+                            exif?.isoSpeedRatings ||
+                            exif?.PhotographicSensitivity ||
+                            exif?.photographicSensitivity ||
+                            '';
+
+                          // 拍摄日期（优先使用 DateTimeOriginal，其次 CreateDate）
+                          const rawDate =
+                            exif?.DateTimeOriginal ||
+                            exif?.dateTimeOriginal ||
+                            exif?.CreateDate ||
+                            exif?.createDate ||
+                            exif?.DateTimeDigitized ||
+                            exif?.dateTimeDigitized ||
+                            exif?.ModifyDate ||
+                            exif?.modifyDate;
+                          if (rawDate instanceof Date) {
+                            const y = rawDate.getFullYear();
+                            const m = String(rawDate.getMonth() + 1).padStart(2, '0');
+                            const d = String(rawDate.getDate()).padStart(2, '0');
+                            shotDate = `${y}-${m}-${d}`;
+                          } else if (typeof rawDate === 'string') {
+                            // 常见格式：'2024:12:03 18:20:15'
+                            const normalized = rawDate.replace(/:/g, '-').replace(' ', 'T');
+                            const parsed = new Date(normalized);
+                            if (!Number.isNaN(parsed.getTime())) {
+                              const y = parsed.getFullYear();
+                              const m = String(parsed.getMonth() + 1).padStart(2, '0');
+                              const d = String(parsed.getDate()).padStart(2, '0');
+                              shotDate = `${y}-${m}-${d}`;
+                            } else {
+                              shotDate = rawDate;
+                            }
+                          }
+
+                          // 相机 / 镜头
+                          camera =
+                            exif?.Model ||
+                            exif?.model ||
+                            exif?.BodySerialNumber ||
+                            exif?.bodySerialNumber ||
+                            '';
+                          lens =
+                            exif?.LensModel ||
+                            exif?.lensModel ||
+                            exif?.Lens ||
+                            exif?.lens ||
+                            exif?.LensSpecification ||
+                            exif?.lensSpecification ||
+                            '';
+                        } catch (exifError) {
+                          console.log('读取 EXIF 生成参数 txt 失败，改为空模板:', exifError);
+                        }
+
+                        const lines = [];
+                        lines.push(`焦距: ${focal || ''}`);
+                        lines.push(`光圈: ${fNumber || ''}`);
+                        lines.push(`快门: ${shutter || ''}`);
+                        lines.push(`ISO: ${iso || ''}`);
+                        lines.push(`相机: ${camera || ''}`);
+                        lines.push(`镜头: ${lens || ''}`);
+                        // 拍摄日期放在最后，方便你手动补
+                        lines.push(`拍摄日期: ${shotDate || ''}`);
+
+                        const txtContent = lines.join('\n');
+                        const txtBlob = new Blob([txtContent], {
+                          type: 'text/plain;charset=utf-8',
+                        });
+                        const txtFile = new File([txtBlob], `${nameWithoutExt}.txt`, {
+                          type: 'text/plain;charset=utf-8',
+                        });
+                        triggerDownload(txtFile, `${nameWithoutExt}.txt`);
 
                         setToolMessage({
                           type: 'success',
-                          text: '已在本地生成原图和压缩图，请在下载对话框中选择同一文件夹保存。',
+                          text: '已在本地生成原图、压缩图和参数 txt（焦距、光圈、快门、ISO、相机、镜头、拍摄日期），请在下载对话框中选择同一文件夹保存。',
                         });
                       } catch (error) {
                         console.error('图片压缩工具失败:', error);
