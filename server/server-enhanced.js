@@ -7,7 +7,6 @@ import { fileURLToPath } from 'url';
 import sharp from 'sharp';
 import OSS from 'ali-oss';
 import dotenv from 'dotenv';
-import { createClient } from 'webdav';
 import winston from 'winston';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -113,146 +112,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// WebDAV 连接缓存
-const webdavClients = new Map();
-
-// 获取 WebDAV 客户端
-const getWebDAVClient = (credentials) => {
-  const cacheKey = `${credentials.url}:${credentials.username}`;
-
-  if (webdavClients.has(cacheKey)) {
-    return webdavClients.get(cacheKey);
-  }
-
-  const client = createClient(credentials.url, {
-    username: credentials.username,
-    password: credentials.password
-  });
-
-  webdavClients.set(cacheKey, client);
-  return client;
-};
-
-// === WebDAV 代理 API ===
-
-// 测试 WebDAV 连接
-app.post('/api/webdav/test', authenticateToken, async (req, res) => {
-  try {
-    const { url, username, password } = req.body;
-
-    if (!url || !username || !password) {
-      return res.status(400).json({ error: '缺少必要参数' });
-    }
-
-    const client = getWebDAVClient({ url, username, password });
-
-    // 测试连接
-    await client.getDirectoryContents('/');
-
-    logger.info(`WebDAV connection test successful for: ${url}`);
-
-    res.json({
-      success: true,
-      message: '连接成功',
-      server: url
-    });
-  } catch (error) {
-    logger.error(`WebDAV connection test failed: ${error.message}`);
-    res.status(500).json({ error: `连接失败: ${error.message}` });
-  }
-});
-
-// 上传文件到 WebDAV
-app.post('/api/webdav/upload', authenticateToken, upload.single('file'), async (req, res) => {
-  let tempFilePath = null;
-
-  try {
-    const { webdavUrl, username, password, remotePath = '' } = req.body;
-
-    if (!req.file) {
-      return res.status(400).json({ error: '没有上传文件' });
-    }
-
-    if (!webdavUrl || !username || !password) {
-      return res.status(400).json({ error: '缺少 WebDAV 配置' });
-    }
-
-    const client = getWebDAVClient({
-      url: webdavUrl,
-      username,
-      password
-    });
-
-    tempFilePath = req.file.path;
-
-    // 生成远程文件路径
-    const remoteFilename = `${Date.now()}-${req.file.originalname}`;
-    const fullRemotePath = path.posix.join('/', remotePath, remoteFilename);
-
-    // 读取文件内容
-    const fileBuffer = fs.readFileSync(tempFilePath);
-
-    // 上传到 WebDAV
-    await client.createFile(fullRemotePath, fileBuffer);
-
-    // 获取文件链接（如果是坚果云等支持公共访问的）
-    const fileUrl = `${webdavUrl.replace(/\/$/, '')}${fullRemotePath}`;
-
-    logger.info(`WebDAV upload successful: ${fullRemotePath}`);
-
-    res.json({
-      success: true,
-      url: fileUrl,
-      filename: remoteFilename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-      remotePath: fullRemotePath,
-      message: '上传到 WebDAV 成功'
-    });
-
-  } catch (error) {
-    logger.error(`WebDAV upload failed: ${error.message}`);
-    res.status(500).json({ error: `上传失败: ${error.message}` });
-  } finally {
-    // 清理临时文件
-    if (tempFilePath && fs.existsSync(tempFilePath)) {
-      fs.unlinkSync(tempFilePath);
-    }
-  }
-});
-
-// 从 WebDAV 删除文件
-app.delete('/api/webdav/delete', authenticateToken, async (req, res) => {
-  try {
-    const { webdavUrl, username, password, remotePath } = req.body;
-
-    if (!webdavUrl || !username || !password || !remotePath) {
-      return res.status(400).json({ error: '缺少必要参数' });
-    }
-
-    const client = getWebDAVClient({
-      url: webdavUrl,
-      username,
-      password
-    });
-
-    await client.deleteFile(remotePath);
-
-    logger.info(`WebDAV delete successful: ${remotePath}`);
-
-    res.json({
-      success: true,
-      message: '从 WebDAV 删除成功',
-      remotePath
-    });
-
-  } catch (error) {
-    logger.error(`WebDAV delete failed: ${error.message}`);
-    res.status(500).json({ error: `删除失败: ${error.message}` });
-  }
-});
-
-// === 现有 API（保持兼容）===
+// === API 端点 ===
 
 // 健康检查
 app.get('/api/health', (req, res) => {
@@ -645,7 +505,6 @@ app.listen(PORT, () => {
   console.log(`📁 上传目录: ${UPLOAD_DIR}`);
   console.log(`🌐 静态文件: http://localhost:${PORT}/uploads/pic4pick/`);
   console.log(`📝 日志目录: ${LOG_DIR}`);
-  console.log(`✅ WebDAV 代理已启用`);
   console.log(`✅ JWT 认证已启用`);
   console.log(`✅ Winston 日志系统已启用`);
 });

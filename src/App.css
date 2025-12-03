@@ -3333,7 +3333,8 @@ main {
   color: var(--muted);
 }
 
-/* WebDAV 配置面板 */
+/* 已废弃：WebDAV 配置面板 */
+/* 
 .webdav-config-panel {
   position: fixed;
   inset: 0;
@@ -3443,6 +3444,7 @@ main {
 .webdav-actions button {
   flex: 1;
 }
+*/
 
 .btn-primary:disabled {
   opacity: 0.6;

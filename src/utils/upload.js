@@ -3,7 +3,6 @@
 // 上传方式类型
 export const UPLOAD_TYPES = {
   BASE64: 'base64',           // 本地 base64（默认）
-  WEBDAV: 'webdav',           // WebDAV
   API: 'api',                 // 后端 API
   CLOUDINARY: 'cloudinary',    // Cloudinary
   SUPABASE: 'supabase',        // Supabase Storage
@@ -40,10 +39,6 @@ export const uploadImage = async (file, filename, onProgress) => {
   let rawResult;
   
   switch (uploadType) {
-    case UPLOAD_TYPES.WEBDAV:
-      rawResult = await uploadToWebDAV(file, filename, onProgress);
-      break;
-    
     case UPLOAD_TYPES.API:
       rawResult = await uploadToAPI(file, filename, onProgress);
       break;
@@ -147,21 +142,6 @@ const uploadToBase64 = async (file, onProgress) => {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-};
-
-// WebDAV 上传
-const uploadToWebDAV = async (file, filename, onProgress) => {
-  const { uploadToWebDAV: upload } = await import('./webdav');
-  // WebDAV 上传可能不支持进度，先尝试传递回调
-  try {
-    return await upload(file, filename, onProgress);
-  } catch (error) {
-    // 如果原函数不支持进度回调，忽略错误继续
-    if (error.message && error.message.includes('onProgress')) {
-      return await upload(file, filename);
-    }
-    throw error;
-  }
 };
 
 // 后端 API 上传

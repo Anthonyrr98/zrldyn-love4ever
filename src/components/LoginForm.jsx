@@ -1,6 +1,6 @@
 // 登录组件
 import { useState } from 'react';
-import { login, isAuthenticated } from '../utils/webdav-proxy';
+import { login } from '../utils/auth';
 
 export default function LoginForm({ onLoginSuccess }) {
   const [formData, setFormData] = useState({

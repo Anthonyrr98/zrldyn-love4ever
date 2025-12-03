@@ -75,14 +75,15 @@ echo ""
 echo "可用的 API 端点："
 echo "  - 健康检查：GET  /api/health"
 echo "  - 用户认证：POST /api/auth/login"
-echo "  - WebDAV 代理：POST /api/webdav/upload"
+echo "  - 文件上传：POST /api/upload"
+echo "  - OSS 上传：POST /api/upload/oss"
 echo ""
 echo "==================================="
 echo ""
 
 # 检查是否有增强版服务器文件
 if [ -f "server-enhanced.js" ]; then
-    echo "使用增强版服务器（WebDAV 代理 + JWT认证）..."
+    echo "使用增强版服务器（JWT认证 + OSS上传）..."
     node server-enhanced.js
 else
     echo "⚠️  未找到 server-enhanced.js，使用原始服务器..."

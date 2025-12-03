@@ -6,11 +6,6 @@ import '../App.css';
 import { uploadImage, getUploadType, setUploadType, UPLOAD_TYPES, compressImage } from '../utils/upload';
 import { getSupabaseClient } from '../utils/supabaseClient';
 import { UploadProgress } from '../components/UploadProgress';
-import {
-  testWebDAVConnection,
-  getWebDAVConfig,
-  saveWebDAVConfig
-} from '../utils/webdav';
 import { getEnvValue, updateEnvOverrides, resetEnvOverrides, ENV_OVERRIDE_KEYS } from '../utils/envConfig';
 import {
   BRAND_LOGO_EVENT,
@@ -42,7 +37,6 @@ const BRAND_LOGO_MAX_SIZE = 1024 * 1024; // 1MB
 const getUploadTypeName = (type) => {
   const names = {
     [UPLOAD_TYPES.BASE64]: '本地存储',
-    [UPLOAD_TYPES.WEBDAV]: 'WebDAV',
     [UPLOAD_TYPES.API]: '后端 API',
     [UPLOAD_TYPES.CLOUDINARY]: 'Cloudinary',
     [UPLOAD_TYPES.SUPABASE]: 'Supabase',
@@ -52,11 +46,6 @@ const getUploadTypeName = (type) => {
 };
 
 export function AdminPage() {
-  // === WebDAV 配置状态 ===
-  const [webdavConfig, setWebdavConfig] = useState({ url: '', username: '', password: '' });
-  const [webdavTestResult, setWebdavTestResult] = useState(null);
-  const [webdavTesting, setWebdavTesting] = useState(false);
-
   const adminPassword = getEnvValue('VITE_ADMIN_PASSWORD', 'pic4pick-admin');
 
   // === 原有状态 ===
@@ -82,7 +71,6 @@ export function AdminPage() {
     tags: row.tags || '',
     preview: row.thumbnail_url || row.image_url || '',
     image: row.image_url || '',
-    webdavURL: row.image_url || '',
     latitude: row.latitude,
     longitude: row.longitude,
     altitude: row.altitude,
@@ -305,7 +293,7 @@ export function AdminPage() {
 
   const pendingReviewCount = useMemo(() => adminUploads.length, [adminUploads]);
 
-  // 切换上传目标存储（本地 / WebDAV / 阿里云 OSS 等）
+  // 切换上传目标存储（本地 / 阿里云 OSS 等）
   const handleUploadTypeChange = (type) => {
     setUploadType(type);           // 写入 localStorage
     setUploadTypeState(type);      // 更新当前页面状态
@@ -565,47 +553,6 @@ export function AdminPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedPhotos = filteredPhotos.slice(startIndex, endIndex);
-
-  // WebDAV 配置管理
-  useEffect(() => {
-    const config = getWebDAVConfig();
-    setWebdavConfig(config);
-  }, []);
-
-  // 保存 WebDAV 配置
-  const handleSaveWebDAVConfig = () => {
-    saveWebDAVConfig(
-      webdavConfig.url.trim(),
-      webdavConfig.username.trim(),
-      webdavConfig.password.trim()
-    );
-    setWebdavTestResult({
-      type: 'info',
-      message: '配置已保存'
-    });
-    setTimeout(() => setWebdavTestResult(null), 3000);
-  };
-
-  // 测试 WebDAV 连接
-  const handleTestWebDAV = async () => {
-    setWebdavTesting(true);
-    setWebdavTestResult(null);
-
-    try {
-      const result = await testWebDAVConnection();
-      setWebdavTestResult({
-        type: result.success ? 'success' : 'error',
-        message: result.message
-      });
-    } catch (error) {
-      setWebdavTestResult({
-        type: 'error',
-        message: error.message
-      });
-    } finally {
-      setWebdavTesting(false);
-    }
-  };
 
   // .env.local 运行时配置
   const handleEnvConfigChange = (event) => {
@@ -1861,7 +1808,6 @@ export function AdminPage() {
         preview: thumbnailURL || imageURL, // 后台列表统一用缩略图
       image: imageURL,
       thumbnail: thumbnailURL || null,
-        webdavURL: imageURL.startsWith('http') ? imageURL : null, // 标记是否为 WebDAV URL
         latitude: uploadForm.latitude,
         longitude: uploadForm.longitude,
         altitude: uploadForm.altitude,
