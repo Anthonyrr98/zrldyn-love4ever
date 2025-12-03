@@ -85,12 +85,10 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// 不限制文件大小（仅依靠 OSS / Node 本身的限制）
 const upload = multer({
   storage: storage,
-  limits: {
-    fileSize: 15 * 1024 * 1024 // 增加到 15MB
-  },
-  fileFilter: fileFilter
+  fileFilter: fileFilter,
 });
 
 // 提供静态文件服务
@@ -347,13 +345,19 @@ app.get('/api/images', (req, res) => {
 let ossClient = null;
 if (process.env.ALIYUN_OSS_REGION && process.env.ALIYUN_OSS_BUCKET &&
     process.env.ALIYUN_OSS_ACCESS_KEY_ID && process.env.ALIYUN_OSS_ACCESS_KEY_SECRET) {
+  // 自动处理 Region 格式：如果用户输入的是 cn-beijing，自动转换为 oss-cn-beijing
+  let region = process.env.ALIYUN_OSS_REGION.trim();
+  if (!region.startsWith('oss-')) {
+    region = `oss-${region}`;
+  }
+  
   ossClient = new OSS({
-    region: process.env.ALIYUN_OSS_REGION,
+    region: region,
     accessKeyId: process.env.ALIYUN_OSS_ACCESS_KEY_ID,
     accessKeySecret: process.env.ALIYUN_OSS_ACCESS_KEY_SECRET,
     bucket: process.env.ALIYUN_OSS_BUCKET,
   });
-  console.log('✅ 阿里云 OSS 客户端已初始化');
+  console.log(`✅ 阿里云 OSS 客户端已初始化 (Region: ${region}, Bucket: ${process.env.ALIYUN_OSS_BUCKET})`);
 }
 
 // 上传到阿里云 OSS
@@ -369,28 +373,73 @@ app.post('/api/upload/oss', upload.single('file'), async (req, res) => {
 
     const file = req.file;
     const filename = req.body.filename || file.filename;
-    const objectKey = `pic4pick/${filename}`;
+    // 原图放在 origin 目录，缩略图放在 ore 目录
+    const originKey = `origin/${filename}`;
+    const thumbKey = `ore/${filename}`;
 
-    let fileBuffer = fs.readFileSync(file.path);
-    if (req.body.optimize === 'true') {
-      fileBuffer = await sharp(file.path)
-        .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
+    // 处理原图：根据 EXIF Orientation 自动旋转并去除 EXIF（避免浏览器再次旋转）
+    let processedOriginBuffer;
+    try {
+      const originImage = sharp(file.path);
+      // 先读取元数据，确保能获取 EXIF Orientation
+      const metadata = await originImage.metadata();
+      
+      // 根据 EXIF Orientation 旋转图片，并移除 EXIF（避免浏览器重复旋转）
+      processedOriginBuffer = await originImage
+        .rotate() // 自动根据 EXIF Orientation 旋转
+        .resize(req.body.optimize === 'true' ? 1920 : null, req.body.optimize === 'true' ? 1920 : null, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: req.body.optimize === 'true' ? 85 : 95 })
         .toBuffer();
+    } catch (originError) {
+      console.warn('处理原图失败，使用原始文件:', originError.message || originError);
+      processedOriginBuffer = fs.readFileSync(file.path);
     }
 
-    const result = await ossClient.put(objectKey, fileBuffer, {
+    // 生成缩略图（较小尺寸，并按 EXIF 自动旋转）
+    let thumbBuffer;
+    try {
+      const thumbImage = sharp(file.path);
+      // 读取元数据确保能获取 EXIF
+      await thumbImage.metadata();
+      
+      thumbBuffer = await thumbImage
+        .rotate() // 根据 EXIF Orientation 自动旋转
+        .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+    } catch (thumbError) {
+      console.warn('生成缩略图失败，仅上传原图:', thumbError.message || thumbError);
+      thumbBuffer = null;
+    }
+
+    // 上传原图到 origin 目录（已根据 EXIF 旋转）
+    const originResult = await ossClient.put(originKey, processedOriginBuffer, {
       headers: {
-        'Content-Type': file.mimetype,
+        'Content-Type': 'image/jpeg', // 统一为 JPEG（因为经过 sharp 处理）
         'x-oss-object-acl': 'public-read',
       },
     });
+
+    // 如果缩略图生成成功，则上传到 ore 目录
+    let thumbResult = null;
+    if (thumbBuffer) {
+      thumbResult = await ossClient.put(thumbKey, thumbBuffer, {
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'x-oss-object-acl': 'public-read',
+        },
+      });
+    }
 
     fs.unlinkSync(file.path);
 
     res.json({
       success: true,
-      url: result.url,
+      url: originResult.url,
+      thumbnailUrl: thumbResult ? thumbResult.url : null,
       filename: filename,
       originalName: file.originalname,
       size: file.size,

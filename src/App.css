@@ -2966,6 +2966,30 @@ main {
   border-radius: 12px;
 }
 
+/* 移动端：确保按钮可见 */
+@media (max-width: 768px) {
+  .admin-list-item.compact {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .admin-list-item.compact .item-content.compact {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .admin-list-item.compact .item-actions.compact {
+    width: 100%;
+    flex-direction: row;
+    margin-top: 8px;
+    min-width: auto;
+  }
+  
+  .admin-list-item.compact .item-actions.compact button {
+    flex: 1;
+  }
+}
+
 .admin-list-item:hover {
   background: rgba(207, 165, 106, 0.05);
   box-shadow: var(--shadow-soft);
@@ -2998,9 +3022,10 @@ main {
 }
 
 .item-image.compact {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
+  width: 120px;
+  height: 120px;
+  border-radius: 4px;
+  aspect-ratio: 1 / 1;
 }
 
 .item-image.grid-item-image {

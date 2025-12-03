@@ -151,7 +151,7 @@ export function AdminPage() {
     tags: '',
     preview: '',
     file: null,
-    uploadMode: 'url', // 'file' | 'url'
+    uploadMode: 'file', // 'file' | 'url'
     imageUrl: '', // 原图直链 URL
     thumbnailUrl: '', // 缩略图直链 URL
     latitude: null,
@@ -263,7 +263,16 @@ export function AdminPage() {
   const [submitMessage, setSubmitMessage] = useState({ type: '', text: '' });
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' | 'pending' | 'approved' | 'tools' | 'config'
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadType, setUploadTypeState] = useState(getUploadType());
+  // 默认使用阿里云 OSS
+  const [uploadType, setUploadTypeState] = useState(() => {
+    const currentType = getUploadType();
+    // 如果不是阿里云 OSS，自动设置为阿里云 OSS
+    if (currentType !== UPLOAD_TYPES.ALIYUN_OSS) {
+      setUploadType(UPLOAD_TYPES.ALIYUN_OSS);
+      return UPLOAD_TYPES.ALIYUN_OSS;
+    }
+    return currentType;
+  });
   const [isSupabaseLoading, setIsSupabaseLoading] = useState(Boolean(supabase));
   const [supabaseError, setSupabaseError] = useState('');
   const [brandLogo, setBrandLogo] = useState(() => getStoredBrandLogo());
@@ -279,6 +288,19 @@ export function AdminPage() {
   const [toolLoading, setToolLoading] = useState(false);
 
   const pendingReviewCount = useMemo(() => adminUploads.length, [adminUploads]);
+
+  // 切换上传目标存储（本地 / WebDAV / 阿里云 OSS 等）
+  const handleUploadTypeChange = (type) => {
+    setUploadType(type);           // 写入 localStorage
+    setUploadTypeState(type);      // 更新当前页面状态
+    setSubmitMessage({
+      type: 'success',
+      text: `已切换上传目标为：${getUploadTypeName(type)}`,
+    });
+    setTimeout(() => {
+      setSubmitMessage({ type: '', text: '' });
+    }, 2000);
+  };
 
   // 调试：在开发环境打印高德 KEY 是否存在
   useEffect(() => {
@@ -1374,45 +1396,158 @@ export function AdminPage() {
       return;
     }
 
-    // 验证文件大小（例如限制为 10MB）
-    if (file.size > 10 * 1024 * 1024) {
-      setSubmitMessage({ type: 'error', text: '图片大小不能超过 10MB' });
-      return;
-    }
+    // 不限制文件大小（仅依靠后端和 OSS 的限制）
 
     const reader = new FileReader();
     reader.onload = async () => {
       const preview = reader.result?.toString() || '';
       setUploadForm((prev) => ({ ...prev, file, preview, imageUrl: '' }));
       
-      // 读取EXIF数据获取地理位置
+      // 读取EXIF数据获取地理位置和相机参数
       try {
+        // 使用更完整的配置来读取EXIF数据
         const exif = await exifr.parse(file, {
           gps: true,
-          translateKeys: false,
+          translateKeys: true, // 使用翻译后的键名（更统一）
+          pick: [
+            'FocalLength', 'FocalLengthIn35mmFormat',
+            'FNumber', 'ApertureValue',
+            'ExposureTime', 'ShutterSpeedValue',
+            'ISO', 'ISOSpeedRatings',
+            'Make', 'Model',
+            'LensModel', 'LensMake', 'Lens',
+            'DateTimeOriginal', 'DateTime',
+            'GPSLatitude', 'GPSLongitude', 'GPSAltitude'
+          ],
         });
         
+        // 调试：在控制台输出读取到的EXIF数据
+        console.log('读取到的EXIF数据:', exif);
+        
+        // 准备更新的表单数据
+        const updates = {};
+        let hasUpdates = false;
+        let successMessages = [];
+        
+        // 读取地理位置信息
         if (exif?.GPSLatitude && exif?.GPSLongitude) {
-          setUploadForm((prev) => ({
-            ...prev,
-            latitude: exif.GPSLatitude,
-            longitude: exif.GPSLongitude,
-            altitude: exif.GPSAltitude || null,
-          }));
+          updates.latitude = exif.GPSLatitude;
+          updates.longitude = exif.GPSLongitude;
+          updates.altitude = exif.GPSAltitude || null;
           setSelectedLocation({
             lat: exif.GPSLatitude,
             lon: exif.GPSLongitude,
           });
-          setSubmitMessage({ type: 'success', text: '已从照片EXIF数据中读取地理位置信息' });
+          successMessages.push('地理位置信息');
+          hasUpdates = true;
         } else {
-          // 如果没有EXIF数据，提示可以手动选择
-          setUploadForm((prev) => ({
-            ...prev,
-            latitude: null,
-            longitude: null,
-            altitude: null,
-          }));
+          updates.latitude = null;
+          updates.longitude = null;
+          updates.altitude = null;
           setSelectedLocation(null);
+        }
+        
+        // 读取相机参数（同时支持原始键名和翻译后的键名）
+        // 焦距 (FocalLength 或 focalLength，单位通常是 mm)
+        const focalLength = exif?.FocalLength || exif?.focalLength || exif?.FocalLengthIn35mmFormat || exif?.focalLengthIn35mmFormat;
+        if (focalLength) {
+          const focal = typeof focalLength === 'number' 
+            ? `${Math.round(focalLength)}mm` 
+            : String(focalLength);
+          updates.focal = focal;
+          hasUpdates = true;
+        }
+        
+        // 光圈 (FNumber 或 fNumber)
+        const fNumber = exif?.FNumber || exif?.fNumber || exif?.ApertureValue || exif?.apertureValue;
+        if (fNumber) {
+          let aperture = '';
+          if (typeof fNumber === 'number') {
+            aperture = `f/${fNumber.toFixed(1)}`;
+          } else if (typeof fNumber === 'string' && fNumber.startsWith('f/')) {
+            aperture = fNumber;
+          } else {
+            aperture = `f/${fNumber}`;
+          }
+          updates.aperture = aperture;
+          hasUpdates = true;
+        }
+        
+        // 快门速度 (ExposureTime 或 exposureTime，单位是秒)
+        const exposureTime = exif?.ExposureTime || exif?.exposureTime;
+        if (exposureTime) {
+          let shutter = '';
+          if (typeof exposureTime === 'number') {
+            if (exposureTime >= 1) {
+              shutter = `${exposureTime.toFixed(1)}s`;
+            } else {
+              shutter = `1/${Math.round(1 / exposureTime)}s`;
+            }
+          } else {
+            shutter = String(exposureTime);
+          }
+          updates.shutter = shutter;
+          hasUpdates = true;
+        }
+        
+        // ISO (ISO 或 iso 或 ISOSpeedRatings)
+        const iso = exif?.ISO || exif?.iso || exif?.ISOSpeedRatings || exif?.isoSpeedRatings;
+        if (iso) {
+          updates.iso = String(iso);
+          hasUpdates = true;
+        }
+        
+        // 相机型号 (Make + Model)
+        const make = exif?.Make || exif?.make || '';
+        const model = exif?.Model || exif?.model || '';
+        if (make || model) {
+          const camera = [make, model].filter(Boolean).join(' ').trim();
+          if (camera) {
+            updates.camera = camera;
+            hasUpdates = true;
+          }
+        }
+        
+        // 镜头型号 (LensModel 或 lensModel 或 Lens)
+        const lensModel = exif?.LensModel || exif?.lensModel || exif?.Lens || exif?.lens;
+        if (lensModel) {
+          updates.lens = String(lensModel);
+          hasUpdates = true;
+        }
+        
+        // 拍摄日期 (DateTimeOriginal 或 dateTimeOriginal 或 DateTime)
+        const dateTimeOriginal = exif?.DateTimeOriginal || exif?.dateTimeOriginal || exif?.DateTime || exif?.dateTime;
+        if (dateTimeOriginal) {
+          try {
+            const date = new Date(dateTimeOriginal);
+            if (!isNaN(date.getTime())) {
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              updates.shotDate = `${year}-${month}-${day}`;
+              hasUpdates = true;
+            }
+          } catch (e) {
+            console.log('无法解析拍摄日期:', e);
+          }
+        }
+        
+        // 更新表单
+        if (hasUpdates) {
+          setUploadForm((prev) => ({ ...prev, ...updates }));
+          const messages = [];
+          if (successMessages.length > 0) {
+            messages.push(...successMessages);
+          }
+          if (updates.focal || updates.aperture || updates.shutter || updates.iso || updates.camera || updates.lens) {
+            messages.push('相机参数');
+          }
+          setSubmitMessage({ 
+            type: 'success', 
+            text: `已从照片EXIF数据中读取：${messages.join('、')}` 
+          });
+        } else {
+          setSubmitMessage({ type: 'info', text: '照片中未找到EXIF数据，请手动填写参数' });
         }
       } catch (error) {
         console.log('无法读取EXIF数据:', error);
@@ -1423,6 +1558,7 @@ export function AdminPage() {
           altitude: null,
         }));
         setSelectedLocation(null);
+        setSubmitMessage({ type: 'info', text: '无法读取照片EXIF数据，请手动填写参数' });
       }
       
       if (submitMessage.type === 'error') {
@@ -1527,15 +1663,22 @@ export function AdminPage() {
         // 文件上传模式
         const fileExtension = uploadForm.file.name.split('.').pop();
         const filename = `${crypto.randomUUID()}.${fileExtension}`;
-        
+
         // 使用通用上传函数
         imageURL = uploadForm.preview; // 默认使用预览（base64）
         thumbnailURL = uploadForm.preview;
-        
+
         try {
           console.log('开始上传，上传类型:', uploadType, '文件名:', filename);
-          imageURL = await uploadImage(uploadForm.file, filename);
-          console.log('上传成功，返回 URL:', imageURL);
+          const { url, thumbnailUrl: returnedThumb } = await uploadImage(uploadForm.file, filename);
+          imageURL = url || imageURL;
+          // 如果后端返回了缩略图（例如 OSS 的 ore 目录），优先使用
+          if (returnedThumb) {
+            thumbnailURL = returnedThumb;
+          } else {
+            thumbnailURL = imageURL;
+          }
+          console.log('上传成功，返回 URL:', imageURL, '缩略图:', thumbnailURL);
           if (uploadType !== UPLOAD_TYPES.BASE64) {
             setSubmitMessage({ type: 'success', text: `照片已上传到 ${getUploadTypeName(uploadType)}` });
           }
@@ -1629,7 +1772,7 @@ export function AdminPage() {
       tags: '',
       preview: '',
       file: null,
-      uploadMode: 'url',
+      uploadMode: 'file',
       imageUrl: '',
       thumbnailUrl: '',
       latitude: null,
@@ -3327,7 +3470,26 @@ export function AdminPage() {
                   </div>
                 </div>
                 
-                {/* 上传方式切换 */}
+                {/* 上传目标存储（仅阿里云 OSS） */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginBottom: '12px',
+                    padding: '8px 12px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  <div style={{ fontSize: '0.9rem', color: 'var(--muted)' }}>
+                    当前上传目标：<strong>阿里云 OSS</strong>
+                  </div>
+                </div>
+
+                {/* 上传方式切换（文件 / 直链） */}
                 <div style={{ 
                   display: 'flex', 
                   gap: '12px', 
@@ -3336,24 +3498,6 @@ export function AdminPage() {
                   background: 'rgba(255, 255, 255, 0.05)',
                   borderRadius: '8px'
                 }}>
-                  <button
-                    type="button"
-                    onClick={() => handleUploadModeChange('url')}
-                    style={{
-                      flex: 1,
-                      padding: '10px 16px',
-                      background: uploadForm.uploadMode === 'url' ? 'var(--accent)' : 'transparent',
-                      border: '1px solid var(--border)',
-                      borderRadius: '6px',
-                      color: uploadForm.uploadMode === 'url' ? 'var(--bg)' : 'var(--text)',
-                      cursor: 'pointer',
-                      fontSize: '0.95rem',
-                      fontWeight: uploadForm.uploadMode === 'url' ? '600' : '400',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    直链上传
-                  </button>
                   <button
                     type="button"
                     onClick={() => handleUploadModeChange('file')}
@@ -3371,6 +3515,24 @@ export function AdminPage() {
                     }}
                   >
                     文件上传
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUploadModeChange('url')}
+                    style={{
+                      flex: 1,
+                      padding: '10px 16px',
+                      background: uploadForm.uploadMode === 'url' ? 'var(--accent)' : 'transparent',
+                      border: '1px solid var(--border)',
+                      borderRadius: '6px',
+                      color: uploadForm.uploadMode === 'url' ? 'var(--bg)' : 'var(--text)',
+                      cursor: 'pointer',
+                      fontSize: '0.95rem',
+                      fontWeight: uploadForm.uploadMode === 'url' ? '600' : '400',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    直链上传
                   </button>
               </div>
 
@@ -3407,7 +3569,7 @@ export function AdminPage() {
                             </svg>
                           </div>
                           <p className="dropzone-text">点击或拖拽上传照片</p>
-                          <p className="dropzone-hint">支持 JPG、PNG 格式，最大 10MB</p>
+                          <p className="dropzone-hint">支持 JPG、PNG 格式</p>
                         </div>
                       )}
                     </label>
@@ -3893,19 +4055,22 @@ export function AdminPage() {
                           {new Date(item.createdAt).toLocaleString('zh-CN')}
                         </p>
                       </div>
-                      <div className="item-actions" style={{
+                      <div className="item-actions compact" style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         gap: '8px',
-                        marginTop: 'auto',
-                        paddingTop: '12px'
+                        flexShrink: 0,
+                        minWidth: '80px',
+                        alignItems: 'stretch'
                       }}>
                         <button
                           className="btn-approve"
                           onClick={() => handleApprove(item.id)}
                           style={{ 
-                            flex: 1,
+                            width: '100%',
                             fontSize: '0.85rem', 
-                            padding: '8px 12px'
+                            padding: '10px 16px',
+                            whiteSpace: 'nowrap'
                           }}
                         >
                           ✓ 通过
@@ -3914,9 +4079,10 @@ export function AdminPage() {
                           className="btn-reject"
                           onClick={() => handleReject(item.id)}
                           style={{ 
-                            flex: 1,
+                            width: '100%',
                             fontSize: '0.85rem', 
-                            padding: '8px 12px'
+                            padding: '10px 16px',
+                            whiteSpace: 'nowrap'
                           }}
                         >
                           ✕ 拒绝

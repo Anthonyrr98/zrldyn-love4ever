@@ -23,29 +23,52 @@ export const setUploadType = (type) => {
 // 通用上传函数
 export const uploadImage = async (file, filename) => {
   const uploadType = getUploadType();
-  
+  const normalizeResult = (result) => {
+    if (!result) {
+      return { url: '', thumbnailUrl: null };
+    }
+    if (typeof result === 'string') {
+      return { url: result, thumbnailUrl: null };
+    }
+    // 已经是带 url / thumbnailUrl 的对象
+    return {
+      url: result.url || result.imageUrl || result.fileUrl || '',
+      thumbnailUrl: result.thumbnailUrl ?? result.thumbnail_url ?? null,
+    };
+  };
+
+  let rawResult;
+
   switch (uploadType) {
     case UPLOAD_TYPES.WEBDAV:
-      return await uploadToWebDAV(file, filename);
-    
+      rawResult = await uploadToWebDAV(file, filename);
+      break;
+
     case UPLOAD_TYPES.API:
-      return await uploadToAPI(file, filename);
-    
+      rawResult = await uploadToAPI(file, filename);
+      break;
+
     case UPLOAD_TYPES.CLOUDINARY:
-      return await uploadToCloudinary(file, filename);
-    
+      rawResult = await uploadToCloudinary(file, filename);
+      break;
+
     case UPLOAD_TYPES.SUPABASE:
-      return await uploadToSupabase(file, filename);
-    
+      rawResult = await uploadToSupabase(file, filename);
+      break;
+
     case UPLOAD_TYPES.ALIYUN_OSS:
       console.log('[uploadImage] 使用阿里云 OSS 上传');
-      return await uploadToAliyunOSS(file, filename);
-    
+      rawResult = await uploadToAliyunOSS(file, filename);
+      break;
+
     case UPLOAD_TYPES.BASE64:
     default:
       console.log('[uploadImage] 使用 Base64 本地存储');
-      return await uploadToBase64(file);
+      rawResult = await uploadToBase64(file);
+      break;
   }
+
+  return normalizeResult(rawResult);
 };
 
 // 客户端图片压缩工具，用于生成较小的缩略图文件
@@ -216,7 +239,8 @@ const uploadToAliyunOSS = async (file, filename) => {
   const bucket = localStorage.getItem('aliyun_oss_bucket') || '';
   const accessKeyId = localStorage.getItem('aliyun_oss_access_key_id') || '';
   const accessKeySecret = localStorage.getItem('aliyun_oss_access_key_secret') || '';
-  const useBackend = localStorage.getItem('aliyun_oss_use_backend') === 'true';
+  // 默认使用后端代理模式（更安全），除非明确设置为 'false'
+  const useBackend = localStorage.getItem('aliyun_oss_use_backend') !== 'false';
   
   console.log('[uploadToAliyunOSS] 配置检查:', {
     useBackend,
@@ -226,9 +250,10 @@ const uploadToAliyunOSS = async (file, filename) => {
     hasAccessKeySecret: !!accessKeySecret,
   });
   
-  // 如果使用后端代理上传（推荐）
+  // 如果使用后端代理上传（推荐，默认模式）
   if (useBackend) {
-    const apiUrl = localStorage.getItem('aliyun_oss_backend_url') || '/api/upload/oss';
+    // 默认使用完整 URL，如果前后端在同一端口可通过代理配置覆盖
+    const apiUrl = localStorage.getItem('aliyun_oss_backend_url') || 'http://localhost:3002/api/upload/oss';
     console.log('[uploadToAliyunOSS] 使用后端代理，API 地址:', apiUrl);
     
     const formData = new FormData();
@@ -261,8 +286,12 @@ const uploadToAliyunOSS = async (file, filename) => {
       if (!data.success && !data.url) {
         throw new Error(data.error || '上传失败：服务器未返回有效的 URL');
       }
-      
-      return data.url || data.imageUrl || data.fileUrl;
+
+      // 返回包含原图和缩略图的对象，供上层统一处理
+      return {
+        url: data.url || data.imageUrl || data.fileUrl || '',
+        thumbnailUrl: data.thumbnailUrl || data.thumbnail_url || null,
+      };
     } catch (error) {
       console.error('[uploadToAliyunOSS] 后端代理上传失败:', error);
       throw error;
