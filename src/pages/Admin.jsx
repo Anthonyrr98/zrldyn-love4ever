@@ -980,6 +980,20 @@ export function AdminPage() {
     }
   }, [showLocationPicker]);
 
+  // 生成高德地图 API URL（生产环境直接调用，开发环境使用代理）
+  const getAmapApiUrl = useCallback((path) => {
+    // 检测是否为生产环境（GitHub Pages 或其他静态托管）
+    const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
+    
+    if (isProduction) {
+      // 生产环境：直接使用高德地图 API
+      return `https://restapi.amap.com${path}`;
+    } else {
+      // 开发环境：使用 Vite 代理
+      return `/amap-api${path}`;
+    }
+  }, []);
+
   // 地理位置搜索函数（优先使用高德地图搜索 API，需要配置 VITE_AMAP_KEY）
   const searchLocation = useCallback(async (query, isEdit = false) => {
     if (!query.trim()) {
@@ -1015,9 +1029,9 @@ export function AdminPage() {
         
       // 1. 输入提示 API（Autocomplete）获取快速结果
         try {
-        const autocompleteUrl = `/amap-api/v3/assistant/inputtips?key=${amapKey}&keywords=${encodeURIComponent(
+        const autocompleteUrl = getAmapApiUrl(`/v3/assistant/inputtips?key=${amapKey}&keywords=${encodeURIComponent(
           query
-        )}&city=&datatype=all`;
+        )}&city=&datatype=all`);
           const autocompleteResponse = await fetch(autocompleteUrl);
           
           if (autocompleteResponse.ok) {
@@ -1051,9 +1065,9 @@ export function AdminPage() {
         
       // 2. 地点搜索 API（Place Search）获取更多结果
         try {
-        const searchUrl = `/amap-api/v3/place/text?key=${amapKey}&keywords=${encodeURIComponent(
+        const searchUrl = getAmapApiUrl(`/v3/place/text?key=${amapKey}&keywords=${encodeURIComponent(
           query
-        )}&city=&offset=20&page=1&extensions=all&types=`;
+        )}&city=&offset=20&page=1&extensions=all&types=`);
           const response = await fetch(searchUrl);
           
           if (response.ok) {
@@ -1122,7 +1136,7 @@ export function AdminPage() {
         setIsSearching(false);
       }
     }
-  }, []);
+  }, [getAmapApiUrl]);
 
   // 选择搜索结果并在地图上定位
   const selectSearchResult = (result, isEdit = false) => {
@@ -1522,7 +1536,7 @@ export function AdminPage() {
           try {
             const amapKey = getEnvValue('VITE_AMAP_KEY', '');
             if (amapKey) {
-              const reverseGeocodeUrl = `/amap-api/v3/geocode/regeo?key=${amapKey}&location=${updates.longitude},${updates.latitude}&radius=1000&extensions=all`;
+              const reverseGeocodeUrl = getAmapApiUrl(`/v3/geocode/regeo?key=${amapKey}&location=${updates.longitude},${updates.latitude}&radius=1000&extensions=all`);
               
               const response = await fetch(reverseGeocodeUrl);
               if (response.ok) {
