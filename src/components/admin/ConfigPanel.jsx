@@ -3,7 +3,7 @@
  * 环境变量配置、品牌 Logo、品牌标题等
  */
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { getEnvValue, updateEnvOverrides, resetEnvOverrides, ENV_OVERRIDE_KEYS } from '../../utils/envConfig';
 import {
   BRAND_LOGO_MAX_SIZE,
@@ -16,6 +16,7 @@ import {
   resetBrandText,
 } from '../../utils/branding';
 import { handleError, formatErrorMessage, ErrorType } from '../../utils/errorHandler';
+import { StorageString, STORAGE_KEYS } from '../../utils/storage';
 
 export const ConfigPanel = ({
   supabase,
@@ -36,6 +37,12 @@ export const ConfigPanel = ({
   importFileInputRef,
 }) => {
   const logoFileInputRef = useRef(null);
+  
+  // 后端 URL 配置状态
+  const [backendUrl, setBackendUrl] = useState(() => {
+    return StorageString.get(STORAGE_KEYS.ALIYUN_OSS_BACKEND_URL, '');
+  });
+  const [backendUrlMessage, setBackendUrlMessage] = useState({ type: '', text: '' });
 
   const handleLogoUploadClick = () => {
     if (logoFileInputRef.current) {
@@ -216,6 +223,92 @@ export const ConfigPanel = ({
           <button type="button" className="btn-secondary" onClick={handleResetEnvConfig}>
             重置为默认
           </button>
+        </div>
+      </section>
+
+      {/* 阿里云 OSS 后端配置 */}
+      <section className="admin-settings-card">
+        <div className="admin-settings-card-header">
+          <div>
+            <h2 className="admin-settings-card-title">阿里云 OSS 后端配置</h2>
+            <p className="admin-settings-card-subtitle">
+              配置后端服务器 URL，用于处理阿里云 OSS 上传。如果部署在 GitHub Pages，需要单独部署后端服务器。
+            </p>
+          </div>
+        </div>
+
+        {backendUrlMessage.text && (
+          <div className={`admin-message ${backendUrlMessage.type}`} style={{ marginBottom: '12px' }}>
+            {backendUrlMessage.text}
+          </div>
+        )}
+
+        <div className="form-grid">
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <label>后端服务器 URL</label>
+            <input
+              type="text"
+              value={backendUrl}
+              onChange={(e) => setBackendUrl(e.target.value)}
+              placeholder="https://your-backend-server.com/api/upload/oss"
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: '10px',
+                border: '1px solid var(--border)',
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: 'var(--text)',
+              }}
+            />
+            <div style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--muted)' }}>
+              {backendUrl ? (
+                <span>当前配置: <code style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>{backendUrl}</code></span>
+              ) : (
+                <span>未配置，将使用默认值（开发环境: localhost:3002，生产环境: 相对路径或 Supabase Edge Functions）</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              if (backendUrl) {
+                StorageString.set(STORAGE_KEYS.ALIYUN_OSS_BACKEND_URL, backendUrl.trim());
+                setBackendUrlMessage({ type: 'success', text: '后端 URL 已保存，刷新页面后生效' });
+              } else {
+                StorageString.remove(STORAGE_KEYS.ALIYUN_OSS_BACKEND_URL);
+                setBackendUrlMessage({ type: 'info', text: '已清除后端 URL 配置，将使用默认值' });
+              }
+              setTimeout(() => setBackendUrlMessage({ type: '', text: '' }), 3000);
+            }}
+          >
+            保存配置
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              StorageString.remove(STORAGE_KEYS.ALIYUN_OSS_BACKEND_URL);
+              setBackendUrl('');
+              setBackendUrlMessage({ type: 'info', text: '已清除配置，将使用默认值' });
+              setTimeout(() => setBackendUrlMessage({ type: '', text: '' }), 3000);
+            }}
+          >
+            清除配置
+          </button>
+        </div>
+
+        <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '0.9rem', marginBottom: '8px', color: 'var(--text)' }}>配置说明：</h3>
+          <ul style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
+            <li>如果后端服务器部署在独立域名，请输入完整 URL，例如：<code>https://api.example.com/api/upload/oss</code></li>
+            <li>如果后端和前端在同一域名，可以输入相对路径，例如：<code>/api/upload/oss</code></li>
+            <li>如果使用 Supabase Edge Functions，可以留空，系统会自动检测并使用</li>
+            <li>开发环境默认使用 <code>http://localhost:3002/api/upload/oss</code></li>
+          </ul>
         </div>
       </section>
 

@@ -3,6 +3,7 @@
 import { StorageString, STORAGE_KEYS } from './storage';
 import { handleError, ErrorType, safeSync } from './errorHandler';
 import { ensureHttps } from './urlUtils';
+import { generateOSSPutSignature } from './ossSignature';
 
 // 上传方式类型
 export const UPLOAD_TYPES = {
@@ -416,16 +417,30 @@ const uploadToAliyunOSS = async (file, filename, onProgress) => {
     formData.append('file', file);
     formData.append('filename', filename);
     
-    // 使用 fetch API 替代 XMLHttpRequest，对 HTTP/2 支持更好
+    // 使用 fetch API 替代 XMLHttpRequest，对 HTTP/2 和 CORS 支持更好
     // 如果 fetch 失败，回退到 XMLHttpRequest
     const uploadWithFetch = async () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5分钟超时
       
       try {
-        // 使用 fetch API，它对 HTTP/2 支持更好
+        // 检查是否为 Supabase Edge Functions，如果是则添加 Authorization 头部
+        const isSupabaseFunction = apiUrl.includes('supabase.co') && apiUrl.includes('/functions/v1/');
+        const headers = {};
+        
+        if (isSupabaseFunction) {
+          // 获取 Supabase Anon Key
+          const supabaseKey = StorageString.get(STORAGE_KEYS.SUPABASE_ANON_KEY, '') || 
+                             (typeof window !== 'undefined' && import.meta.env.VITE_SUPABASE_ANON_KEY) || '';
+          if (supabaseKey) {
+            headers['Authorization'] = `Bearer ${supabaseKey}`;
+          }
+        }
+        
+        // 使用 fetch API，它对 HTTP/2 和 CORS 支持更好
         const response = await fetch(apiUrl, {
           method: 'POST',
+          headers: headers,
           body: formData,
           signal: controller.signal,
           // 不设置 Content-Type，让浏览器自动设置（包含 boundary）
@@ -461,18 +476,28 @@ const uploadToAliyunOSS = async (file, filename, onProgress) => {
         if (error.name === 'AbortError') {
           throw new Error('上传超时，请检查网络连接或文件大小');
         }
-        // 如果是网络错误，提供更详细的提示（特别是 GitHub Pages 部署场景）
-        if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('ERR_HTTP2'))) {
+        // 如果是网络错误，提供更详细的提示（特别是 GitHub Pages 部署场景和 CORS 错误）
+        if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('ERR_HTTP2') || error.message.includes('CORS'))) {
           const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
           const isGitHubPages = currentDomain.includes('github.io') || currentDomain.includes('github.com');
+          const isSupabaseFunction = apiUrl.includes('supabase.co') && apiUrl.includes('/functions/v1/');
+          
           let helpMessage = '';
-          if (isGitHubPages || (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://'))) {
+          if (isSupabaseFunction) {
+            helpMessage = `\n\n检测到 Supabase Edge Function，CORS 错误通常是因为 Edge Function 未正确配置 CORS 头。\n` +
+              `请确保您的 Supabase Edge Function 代码中包含以下 CORS 配置：\n\n` +
+              `corsHeaders = {\n` +
+              `  'Access-Control-Allow-Origin': '*',\n` +
+              `  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',\n` +
+              `}\n\n` +
+              `并在 OPTIONS 请求时返回这些头部。`;
+          } else if (isGitHubPages || (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://'))) {
             helpMessage = `\n\n如果您是在 GitHub Pages 上部署，后端需要单独部署。\n` +
               `请在浏览器控制台执行以下代码配置后端 URL：\n\n` +
               `localStorage.setItem('aliyun_oss_backend_url', 'https://your-backend-server.com/api/upload/oss');\n\n` +
               `然后刷新页面重试。`;
           }
-          throw new Error(`无法连接到后端服务器。${helpMessage}\n\n当前请求 URL: ${apiUrl}`);
+          throw new Error(`无法连接到后端服务器（可能是 CORS 问题）。${helpMessage}\n\n当前请求 URL: ${apiUrl}`);
         }
         throw error;
       }
@@ -614,7 +639,17 @@ const uploadToAliyunOSS = async (file, filename, onProgress) => {
         }, timeout);
         
         try {
+          // 检查是否为 Supabase Edge Functions，如果是则添加 Authorization 头部
+          const isSupabaseFunction = apiUrl.includes('supabase.co') && apiUrl.includes('/functions/v1/');
           xhr.open('POST', apiUrl);
+          if (isSupabaseFunction) {
+            // 获取 Supabase Anon Key
+            const supabaseKey = StorageString.get(STORAGE_KEYS.SUPABASE_ANON_KEY, '') || 
+                               (typeof window !== 'undefined' && import.meta.env.VITE_SUPABASE_ANON_KEY) || '';
+            if (supabaseKey) {
+              xhr.setRequestHeader('Authorization', `Bearer ${supabaseKey}`);
+            }
+          }
           xhr.send(formData);
         } catch (error) {
           cleanup();
@@ -633,34 +668,59 @@ const uploadToAliyunOSS = async (file, filename, onProgress) => {
       console.warn(`[uploadToAliyunOSS] 文件较大 (${fileSizeMB.toFixed(2)}MB)，可能需要较长时间上传`);
     }
     
-    // 优先使用 XMLHttpRequest（支持进度），如果遇到 HTTP/2 错误则尝试 fetch
-    try {
-      return await uploadWithXHR();
-    } catch (xhrError) {
-      // 如果是 HTTP/2 协议错误或其他网络错误，尝试使用 fetch
-      const errorMessage = xhrError.message || '';
-      if (errorMessage.includes('HTTP2') || errorMessage.includes('ERR_HTTP2') || 
-          errorMessage.includes('网络错误') || xhrError.name === 'NetworkError') {
-        console.warn('[uploadToAliyunOSS] XMLHttpRequest 失败，尝试使用 Fetch API:', xhrError);
+    // 对于 Supabase Edge Functions，优先使用 Fetch API（CORS 支持更好）
+    // 对于其他后端，优先使用 XMLHttpRequest（支持进度），如果遇到错误则尝试 fetch
+    const isSupabaseFunction = apiUrl.includes('supabase.co') && apiUrl.includes('/functions/v1/');
+    
+    if (isSupabaseFunction) {
+      // Supabase Edge Functions：优先使用 Fetch API
+      try {
+        return await uploadWithFetch();
+      } catch (fetchError) {
+        // 如果 fetch 失败，尝试使用 XHR 作为回退
+        console.warn('[uploadToAliyunOSS] Fetch API 失败，尝试使用 XMLHttpRequest:', fetchError);
         try {
-          return await uploadWithFetch();
-        } catch (fetchError) {
-          // 如果 fetch 也失败，抛出原始错误
+          return await uploadWithXHR();
+        } catch (xhrError) {
+          // 如果都失败，抛出更详细的错误
           const appError = handleError(fetchError, {
-            context: 'uploadToAliyunOSS.fetch',
+            context: 'uploadToAliyunOSS.supabase',
             type: ErrorType.NETWORK,
           });
           throw appError;
         }
-      } else {
-        // 其他错误直接抛出
-        throw xhrError;
+      }
+    } else {
+      // 其他后端：优先使用 XMLHttpRequest（支持进度），如果遇到 HTTP/2 错误则尝试 fetch
+      try {
+        return await uploadWithXHR();
+      } catch (xhrError) {
+        // 如果是 HTTP/2 协议错误或其他网络错误，尝试使用 fetch
+        const errorMessage = xhrError.message || '';
+        if (errorMessage.includes('HTTP2') || errorMessage.includes('ERR_HTTP2') || 
+            errorMessage.includes('网络错误') || errorMessage.includes('CORS') ||
+            xhrError.name === 'NetworkError' || xhr.status === 0) {
+          console.warn('[uploadToAliyunOSS] XMLHttpRequest 失败，尝试使用 Fetch API:', xhrError);
+          try {
+            return await uploadWithFetch();
+          } catch (fetchError) {
+            // 如果 fetch 也失败，抛出原始错误
+            const appError = handleError(fetchError, {
+              context: 'uploadToAliyunOSS.fetch',
+              type: ErrorType.NETWORK,
+            });
+            throw appError;
+          }
+        } else {
+          // 其他错误直接抛出
+          throw xhrError;
+        }
       }
     }
   }
   
   // 前端直传（需要 AccessKey，不安全，仅用于开发测试）
-  // 注意：前端直传到 OSS 需要签名，这里简化处理，实际生产环境应该使用后端代理或 STS
+  // ⚠️ 安全警告：前端直传会将 AccessKey 暴露在浏览器中，生产环境强烈不推荐！
   console.log('[uploadToAliyunOSS] 使用前端直传');
   
   if (!region || !bucket || !accessKeyId || !accessKeySecret) {
@@ -673,40 +733,111 @@ const uploadToAliyunOSS = async (file, filename, onProgress) => {
   }
   
   // 构建 OSS 上传 URL
-  const endpoint = `https://${bucket}.${region}.aliyuncs.com`;
+  // 处理 region 格式（如果用户输入的是 cn-beijing，需要转换为 oss-cn-beijing）
+  let ossRegion = region.trim();
+  if (!ossRegion.startsWith('oss-')) {
+    ossRegion = `oss-${ossRegion}`;
+  }
+  
+  const endpoint = `https://${bucket}.${ossRegion}.aliyuncs.com`;
   const objectKey = `pic4pick/${filename}`;
   const url = `${endpoint}/${objectKey}`;
   
-  // 注意：前端直传需要签名，当前实现可能无法正常工作。建议使用后端代理上传。
-  
-  // 注意：前端直传到 OSS 需要签名，这里仅作示例
-  // 实际应该从后端获取签名或使用 STS 临时凭证
   try {
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': file.type,
-        'x-oss-object-acl': 'public-read',
-      },
-      body: file,
+    // 生成 OSS 签名
+    console.log('[uploadToAliyunOSS] 生成 OSS 签名...');
+    const { authorization, date } = await generateOSSPutSignature({
+      accessKeyId,
+      accessKeySecret,
+      bucket,
+      objectKey,
+      contentType: file.type || 'application/octet-stream',
+      acl: 'public-read'
     });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      const appError = handleError(new Error(`OSS 上传失败: ${response.statusText} (${response.status}) - ${errorText.substring(0, 200)}`), {
-        context: 'uploadToAliyunOSS.direct',
-        type: ErrorType.NETWORK,
+    // 使用 XMLHttpRequest 支持进度跟踪
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      
+      // 进度跟踪
+      if (onProgress) {
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percent = (e.loaded / e.total) * 100;
+            onProgress(percent, e.loaded, e.total);
+          }
+        });
+      }
+      
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          console.log('[uploadToAliyunOSS] 前端直传成功:', url);
+          resolve({
+            url: url,
+            thumbnailUrl: null, // 前端直传不生成缩略图
+          });
+        } else {
+          const errorText = xhr.responseText || '';
+          let errorData;
+          try {
+            // 尝试解析 XML 错误响应
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(errorText, 'text/xml');
+            const code = xmlDoc.querySelector('Code')?.textContent || '';
+            const message = xmlDoc.querySelector('Message')?.textContent || '';
+            errorData = { code, message: message || xhr.statusText };
+          } catch {
+            errorData = { message: errorText || xhr.statusText };
+          }
+          
+          const appError = handleError(
+            new Error(`OSS 上传失败: ${errorData.message || xhr.statusText} (${xhr.status}${errorData.code ? ` - ${errorData.code}` : ''})`),
+            {
+              context: 'uploadToAliyunOSS.direct',
+              type: ErrorType.NETWORK,
+            }
+          );
+          reject(appError);
+        }
       });
-      throw appError;
-    }
-    
-    return url;
+      
+      xhr.addEventListener('error', () => {
+        const appError = handleError(new Error('网络错误，无法连接到 OSS 服务器'), {
+          context: 'uploadToAliyunOSS.direct',
+          type: ErrorType.NETWORK,
+        });
+        reject(appError);
+      });
+      
+      xhr.addEventListener('abort', () => {
+        reject(new Error('上传已取消'));
+      });
+      
+      // 设置超时（5分钟）
+      xhr.timeout = 5 * 60 * 1000;
+      xhr.addEventListener('timeout', () => {
+        reject(new Error('上传超时，请检查网络连接或文件大小'));
+      });
+      
+      // 打开连接
+      xhr.open('PUT', url);
+      
+      // 设置请求头
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.setRequestHeader('Date', date);
+      xhr.setRequestHeader('Authorization', authorization);
+      xhr.setRequestHeader('x-oss-object-acl', 'public-read');
+      
+      // 发送文件
+      xhr.send(file);
+    });
   } catch (error) {
+    console.error('[uploadToAliyunOSS] 前端直传错误:', error);
     const appError = handleError(error, {
       context: 'uploadToAliyunOSS.direct',
       type: ErrorType.NETWORK,
     });
-    throw new Error(`前端直传失败: ${appError.message}。建议使用后端代理上传模式。`);
+    throw new Error(`前端直传失败: ${appError.message}。建议使用后端代理上传模式（更安全）。`);
   }
 };
 

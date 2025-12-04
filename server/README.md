@@ -78,6 +78,18 @@ DELETE /api/upload/:filename
 GET /api/images
 ```
 
+## 部署指南
+
+**📖 详细的部署指南请查看：[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)**
+
+该指南包含：
+- 如何获取后端服务器地址
+- Railway、Render、Fly.io 等平台的部署步骤
+- VPS 服务器部署方法
+- 环境变量配置说明
+
+---
+
 ## 部署选项
 
 ### 选项 1: 本地文件系统（当前实现）
