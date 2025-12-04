@@ -66,6 +66,7 @@ export const useFileUpload = () => {
     setUploadBytes({ uploaded: 0, total: 0 });
   }, []);
 
+  // 返回所有状态和函数
   return {
     isUploading,
     uploadProgress,

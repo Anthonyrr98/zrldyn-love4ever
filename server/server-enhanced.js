@@ -21,6 +21,9 @@ const app = express();
 const PORT = process.env.PORT || 3002;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 
+// 设置服务器级别的超时（10分钟，适合大文件上传）
+app.timeout = 10 * 60 * 1000;
+
 // 配置 Winston 日志
 const logger = winston.createLogger({
   level: 'info',
@@ -42,16 +45,19 @@ if (process.env.NODE_ENV !== 'production') {
 
 // 中间件
 // 配置 CORS，允许所有来源（生产环境建议限制特定域名）
-app.use(cors({
+const corsOptions = {
   origin: process.env.CORS_ORIGIN || '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
   maxAge: 86400, // 24小时
-}));
+  optionsSuccessStatus: 200 // 兼容旧版浏览器
+};
+
+app.use(cors(corsOptions));
 
 // 处理预检请求
-app.options('*', cors());
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -232,7 +238,7 @@ if (process.env.ALIYUN_OSS_REGION && process.env.ALIYUN_OSS_BUCKET &&
     accessKeySecret: process.env.ALIYUN_OSS_ACCESS_KEY_SECRET,
     bucket: process.env.ALIYUN_OSS_BUCKET,
   });
-  console.log(`✅ 阿里云 OSS 客户端已初始化 (Region: ${region}, Bucket: ${process.env.ALIYUN_OSS_BUCKET})`);
+  logger.info(`✅ 阿里云 OSS 客户端已初始化 (Region: ${region}, Bucket: ${process.env.ALIYUN_OSS_BUCKET})`);
 }
 
 // 上传到阿里云 OSS
@@ -276,7 +282,7 @@ app.post('/api/upload/oss', upload.single('file'), async (req, res) => {
         .jpeg({ quality: req.body.optimize === 'true' ? 85 : 95 })
         .toBuffer();
     } catch (originError) {
-      console.warn('处理原图失败，使用原始文件:', originError.message || originError);
+      logger.warn('处理原图失败，使用原始文件:', originError.message || originError);
       processedOriginBuffer = fs.readFileSync(file.path);
     }
 
@@ -293,7 +299,7 @@ app.post('/api/upload/oss', upload.single('file'), async (req, res) => {
         .jpeg({ quality: 80 })
         .toBuffer();
     } catch (thumbError) {
-      console.warn('生成缩略图失败，仅上传原图:', thumbError.message || thumbError);
+      logger.warn('生成缩略图失败，仅上传原图:', thumbError.message || thumbError);
       thumbBuffer = null;
     }
 
@@ -359,7 +365,7 @@ app.delete('/api/upload/oss/:filename(*)', async (req, res) => {
 
     // filename 可能包含路径，例如 "origin/filename.jpg" 或 "ore/filename.jpg"
     const filename = req.params.filename;
-    console.log('收到删除请求，filename:', filename);
+    logger.info('收到删除请求，filename:', filename);
     
     // 构建 objectKey
     // 如果 filename 已经包含 origin/ 或 ore/，直接使用
@@ -381,17 +387,17 @@ app.delete('/api/upload/oss/:filename(*)', async (req, res) => {
     const deleteResults = [];
     for (const objectKey of objectKeys) {
       try {
-    await ossClient.delete(objectKey);
+        await ossClient.delete(objectKey);
         deleteResults.push({ objectKey, success: true });
-        console.log('成功删除OSS文件:', objectKey);
+        logger.info('成功删除OSS文件:', objectKey);
       } catch (deleteError) {
         // 如果文件不存在，忽略错误（可能已经删除或路径不对）
         if (deleteError.code === 'NoSuchKey' || deleteError.status === 404) {
           deleteResults.push({ objectKey, success: false, reason: '文件不存在' });
-          console.log('文件不存在，跳过:', objectKey);
+          logger.info('文件不存在，跳过:', objectKey);
         } else {
           deleteResults.push({ objectKey, success: false, error: deleteError.message });
-          console.error('删除OSS文件失败:', objectKey, deleteError);
+          logger.error('删除OSS文件失败:', objectKey, deleteError);
         }
       }
     }
@@ -421,8 +427,11 @@ app.delete('/api/upload/oss/:filename(*)', async (req, res) => {
       }
     }
   } catch (error) {
-    console.error('OSS 删除错误:', error);
-    res.status(500).json({ error: error.message || '删除失败' });
+    logger.error('OSS 删除错误:', error);
+    res.status(500).json({ 
+      error: error.message || '删除失败',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -528,12 +537,20 @@ if (process.env.NODE_ENV === 'production' || process.env.SERVE_STATIC === 'true'
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: '文件大小超过限制（最大 15MB）' });
+      return res.status(400).json({ error: '文件大小超过限制（最大 50MB）' });
     }
+    if (error.code === 'LIMIT_FIELD_SIZE') {
+      return res.status(400).json({ error: '字段大小超过限制（最大 10MB）' });
+    }
+    logger.warn(`Multer error: ${error.code} - ${error.message}`);
+    return res.status(400).json({ error: `上传错误: ${error.message}` });
   }
 
   logger.error(`Server error: ${error.message}`, { stack: error.stack });
-  res.status(500).json({ error: error.message || '服务器错误' });
+  res.status(500).json({ 
+    error: error.message || '服务器错误',
+    details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+  });
 });
 
 app.listen(PORT, () => {
