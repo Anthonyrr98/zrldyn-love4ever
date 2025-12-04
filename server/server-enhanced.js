@@ -553,11 +553,17 @@ app.use((error, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  logger.info(`🚀 服务器运行在 http://localhost:${PORT}`);
+// 监听地址：生产环境监听所有接口，开发环境只监听 localhost
+const HOST = process.env.HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost');
+
+app.listen(PORT, HOST, () => {
+  logger.info(`🚀 服务器运行在 http://${HOST}:${PORT}`);
   console.log(`📁 上传目录: ${UPLOAD_DIR}`);
-  console.log(`🌐 静态文件: http://localhost:${PORT}/uploads/pic4pick/`);
+  console.log(`🌐 静态文件: http://${HOST}:${PORT}/uploads/pic4pick/`);
   console.log(`📝 日志目录: ${LOG_DIR}`);
   console.log(`✅ JWT 认证已启用`);
   console.log(`✅ Winston 日志系统已启用`);
+  if (HOST === '0.0.0.0') {
+    console.log(`🌍 服务器监听所有网络接口，可通过外部访问`);
+  }
 });

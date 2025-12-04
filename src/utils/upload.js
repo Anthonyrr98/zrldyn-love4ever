@@ -376,6 +376,19 @@ const uploadToAliyunOSS = async (file, filename) => {
     const apiUrl = getBackendApiUrl('/api/upload/oss');
     console.log('[uploadToAliyunOSS] 使用后端代理，API 地址:', apiUrl);
     
+    // 在生产环境中，如果使用相对路径但后端可能不在同一域名，给出提示
+    const isProduction = import.meta.env.PROD || 
+      (typeof window !== 'undefined' && 
+       window.location.hostname !== 'localhost' && 
+       window.location.hostname !== '127.0.0.1');
+    
+    if (isProduction && !apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
+      const configuredUrl = StorageString.get(STORAGE_KEYS.ALIYUN_OSS_BACKEND_URL, '');
+      if (!configuredUrl) {
+        console.warn('[uploadToAliyunOSS] 警告：生产环境使用相对路径，但未配置后端 URL。如果后端不在同一域名，请在管理面板中配置完整的后端 URL。');
+      }
+    }
+    
     const formData = new FormData();
     formData.append('file', file);
     formData.append('filename', filename);
@@ -469,9 +482,29 @@ const uploadToAliyunOSS = async (file, filename) => {
       xhr.addEventListener('error', (e) => {
         cleanup();
         console.error('[uploadToAliyunOSS] 网络错误详情:', e);
-        const errorMessage = xhr.status === 0 
-          ? '无法连接到服务器，请检查网络连接或服务器地址'
-          : '网络错误，请稍后重试';
+        console.error('[uploadToAliyunOSS] 请求 URL:', apiUrl);
+        console.error('[uploadToAliyunOSS] XHR 状态:', {
+          readyState: xhr.readyState,
+          status: xhr.status,
+          statusText: xhr.statusText,
+          responseText: xhr.responseText?.substring(0, 200),
+        });
+        
+        let errorMessage = '网络错误，请稍后重试';
+        if (xhr.status === 0) {
+          // status 0 通常表示：
+          // 1. 网络连接失败（无法连接到服务器）
+          // 2. CORS 问题
+          // 3. 请求被浏览器阻止
+          if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
+            errorMessage = `无法连接到服务器 ${apiUrl}。请检查：\n1. 后端服务器是否正在运行\n2. 服务器地址是否正确\n3. 是否存在 CORS 配置问题`;
+          } else {
+            errorMessage = `无法连接到服务器。请检查：\n1. 后端服务器是否正在运行\n2. 是否配置了正确的后端 URL（当前使用相对路径: ${apiUrl}）`;
+          }
+        } else if (xhr.status >= 400) {
+          errorMessage = `服务器错误 (${xhr.status}): ${xhr.statusText || '未知错误'}`;
+        }
+        
         const appError = handleError(new Error(errorMessage), {
           context: 'uploadToAliyunOSS.network',
           type: ErrorType.NETWORK,
