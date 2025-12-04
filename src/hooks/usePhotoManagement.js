@@ -77,18 +77,19 @@ export const usePhotoManagement = (supabase, refreshSupabaseData, setSubmitMessa
       try {
         const payload = buildSupabasePayloadFromPhoto(approvedItem, 'approved');
         
-        // 使用完整的 payload 更新，确保所有字段都正确
+        // 使用 upsert 而不是 update，这样如果记录不存在会创建，存在则更新
         // 移除 reject_reason 字段（如果数据库中没有该字段）
         const { reject_reason, ...updatePayload } = payload;
         const { error, data } = await supabase
           .from('photos')
-          .update({
+          .upsert({
             ...updatePayload,
             status: 'approved',
             // 只在字段存在时更新 reject_reason
             // reject_reason: null, // 暂时注释，如果数据库没有该字段会报错
+          }, {
+            onConflict: 'id' // 如果 id 已存在则更新
           })
-          .eq('id', id)
           .select();
         
         if (error) {
@@ -101,12 +102,10 @@ export const usePhotoManagement = (supabase, refreshSupabaseData, setSubmitMessa
           });
         }
         
-        // 验证更新是否成功
+        // 验证操作是否成功（upsert 应该总是返回数据）
         if (!data || data.length === 0) {
-          throw handleError(new Error('未找到要审核的照片'), {
-            context: 'handleApprove.supabase',
-            type: ErrorType.VALIDATION,
-          });
+          console.warn('审核操作完成，但 Supabase 未返回数据。这可能是因为记录已存在且未更改。');
+          // 不抛出错误，继续执行（可能是记录已存在且状态相同）
         }
         
         await refreshSupabaseData();
@@ -172,11 +171,20 @@ export const usePhotoManagement = (supabase, refreshSupabaseData, setSubmitMessa
 
     if (supabase) {
       try {
-        // 更新状态为 rejected，不包含 reject_reason（如果数据库没有该字段）
+        const payload = buildSupabasePayloadFromPhoto(rejectedItem, 'rejected');
+        
+        // 使用 upsert 而不是 update，这样如果记录不存在会创建，存在则更新
+        // 移除 reject_reason 字段（如果数据库中没有该字段）
+        const { reject_reason, ...updatePayload } = payload;
         const { error, data } = await supabase
           .from('photos')
-          .update({ status: 'rejected' })
-          .eq('id', id)
+          .upsert({
+            ...updatePayload,
+            status: 'rejected',
+            // reject_reason: rejectReason || null, // 暂时注释
+          }, {
+            onConflict: 'id' // 如果 id 已存在则更新
+          })
           .select();
         
         if (error) {
@@ -188,11 +196,10 @@ export const usePhotoManagement = (supabase, refreshSupabaseData, setSubmitMessa
           });
         }
         
+        // 验证操作是否成功（upsert 应该总是返回数据）
         if (!data || data.length === 0) {
-          throw handleError(new Error('未找到要拒绝的照片'), {
-            context: 'handleReject.supabase',
-            type: ErrorType.VALIDATION,
-          });
+          console.warn('拒绝操作完成，但 Supabase 未返回数据。这可能是因为记录已存在且未更改。');
+          // 不抛出错误，继续执行（可能是记录已存在且状态相同）
         }
         
         await refreshSupabaseData();

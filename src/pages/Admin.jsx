@@ -1963,15 +1963,7 @@ export function AdminPage() {
         // 未找到要删除的照片信息（静默处理）
       }
       
-<<<<<<< HEAD
-<<<<<<< HEAD
-    // 删除数据库记录
-=======
       // 删除数据库记录
->>>>>>> parent of b79f62e (优化1.0)
-=======
-      // 删除数据库记录
->>>>>>> parent of b79f62e (优化1.0)
       if (supabase) {
         try {
           await supabase.from('photos').delete().eq('id', editingPhotoId);
@@ -1991,36 +1983,15 @@ export function AdminPage() {
           return;
         }
       }
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-      try {
-      // 从已审核列表删除
-        const approved = loadApprovedPhotos();
-      const approvedFiltered = approved.filter((p) => p.id !== editingPhotoId);
       
-      if (approvedFiltered.length !== approved.length) {
-        Storage.set(APPROVED_STORAGE_KEY, approvedFiltered);
-        setApprovedPhotos([...approvedFiltered]);
-      }
-
-      // 从已拒绝列表删除
-      const rejected = loadRejectedPhotos();
-      const rejectedFiltered = rejected.filter((p) => p.id !== editingPhotoId);
-      
-      if (rejectedFiltered.length !== rejected.length) {
-        Storage.set(REJECTED_STORAGE_KEY, rejectedFiltered);
-        setRejectedPhotos([...rejectedFiltered]);
-      }
-=======
-      
+      // 从本地存储删除
       try {
         // 从已审核列表删除
         const approved = loadApprovedPhotos();
         const approvedFiltered = approved.filter((p) => p.id !== editingPhotoId);
         
         if (approvedFiltered.length !== approved.length) {
-          localStorage.setItem(APPROVED_STORAGE_KEY, JSON.stringify(approvedFiltered));
+          Storage.set(APPROVED_STORAGE_KEY, approvedFiltered);
           setApprovedPhotos([...approvedFiltered]);
         }
 
@@ -2029,57 +2000,23 @@ export function AdminPage() {
         const rejectedFiltered = rejected.filter((p) => p.id !== editingPhotoId);
         
         if (rejectedFiltered.length !== rejected.length) {
-          localStorage.setItem(REJECTED_STORAGE_KEY, JSON.stringify(rejectedFiltered));
-          setRejectedPhotos([...rejectedFiltered]);
-        }
->>>>>>> parent of b79f62e (优化1.0)
-
-=======
-      
-      try {
-        // 从已审核列表删除
-        const approved = loadApprovedPhotos();
-        const approvedFiltered = approved.filter((p) => p.id !== editingPhotoId);
-        
-        if (approvedFiltered.length !== approved.length) {
-          localStorage.setItem(APPROVED_STORAGE_KEY, JSON.stringify(approvedFiltered));
-          setApprovedPhotos([...approvedFiltered]);
-        }
-
-        // 从已拒绝列表删除
-        const rejected = loadRejectedPhotos();
-        const rejectedFiltered = rejected.filter((p) => p.id !== editingPhotoId);
-        
-        if (rejectedFiltered.length !== rejected.length) {
-          localStorage.setItem(REJECTED_STORAGE_KEY, JSON.stringify(rejectedFiltered));
+          Storage.set(REJECTED_STORAGE_KEY, rejectedFiltered);
           setRejectedPhotos([...rejectedFiltered]);
         }
 
->>>>>>> parent of b79f62e (优化1.0)
         setEditingPhotoId(null);
         setSubmitMessage({ type: 'success', text: '删除成功！' });
         setTimeout(() => {
           setSubmitMessage({ type: '', text: '' });
         }, 2000);
       } catch (error) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-      handleError(error, {
-        context: 'handleDelete.localStorage',
-        type: ErrorType.STORAGE,
-        silent: true,
-      });
-        setSubmitMessage({ type: 'error', text: '删除失败，请重试' });
-=======
-        console.error('Failed to delete:', error);
+        handleError(error, {
+          context: 'handleDelete.localStorage',
+          type: ErrorType.STORAGE,
+          silent: true,
+        });
         setSubmitMessage({ type: 'error', text: '删除失败，请重试' });
       }
->>>>>>> parent of b79f62e (优化1.0)
-=======
-        console.error('Failed to delete:', error);
-        setSubmitMessage({ type: 'error', text: '删除失败，请重试' });
-      }
->>>>>>> parent of b79f62e (优化1.0)
     }
   };
 

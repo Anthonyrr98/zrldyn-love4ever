@@ -371,7 +371,7 @@ const getBackendApiUrl = (path = '/api/upload/oss') => {
 };
 
 // 阿里云 OSS 上传
-const uploadToAliyunOSS = async (file, filename) => {
+const uploadToAliyunOSS = async (file, filename, onProgress) => {
   const region = StorageString.get(STORAGE_KEYS.ALIYUN_OSS_REGION, '');
   const bucket = StorageString.get(STORAGE_KEYS.ALIYUN_OSS_BUCKET, '');
   const accessKeyId = StorageString.get(STORAGE_KEYS.ALIYUN_OSS_ACCESS_KEY_ID, '');
