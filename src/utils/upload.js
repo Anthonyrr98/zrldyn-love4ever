@@ -343,7 +343,24 @@ const getBackendApiUrl = (path = '/api/upload/oss') => {
      window.location.hostname !== 'localhost' && 
      window.location.hostname !== '127.0.0.1');
   
+  // 如果配置了 Supabase，尝试使用 Supabase Edge Functions
   if (isProduction) {
+    const supabaseUrl = StorageString.get(STORAGE_KEYS.SUPABASE_URL, '') || 
+                       (typeof window !== 'undefined' && import.meta.env.VITE_SUPABASE_URL) || '';
+    
+    if (supabaseUrl && supabaseUrl.includes('supabase.co')) {
+      // 从 Supabase URL 构建 Edge Functions URL
+      // 格式：https://<project-ref>.supabase.co/functions/v1/upload-oss
+      try {
+        const url = new URL(supabaseUrl);
+        const functionsUrl = `${url.origin}/functions/v1/upload-oss`;
+        console.log('[uploadToAliyunOSS] 检测到 Supabase，使用 Edge Functions:', functionsUrl);
+        return functionsUrl;
+      } catch (e) {
+        console.warn('[uploadToAliyunOSS] 无法解析 Supabase URL:', e);
+      }
+    }
+    
     // 生产环境：使用相对路径（假设后端和前端在同一域名下）
     // 或者用户需要在管理面板中配置完整的后端 URL
     return path;
@@ -385,7 +402,13 @@ const uploadToAliyunOSS = async (file, filename) => {
     if (isProduction && !apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
       const configuredUrl = StorageString.get(STORAGE_KEYS.ALIYUN_OSS_BACKEND_URL, '');
       if (!configuredUrl) {
-        console.warn('[uploadToAliyunOSS] 警告：生产环境使用相对路径，但未配置后端 URL。如果后端不在同一域名，请在管理面板中配置完整的后端 URL。');
+        const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
+        console.warn(
+          `[uploadToAliyunOSS] 警告：生产环境使用相对路径 (${apiUrl})，但未配置后端 URL。\n` +
+          `当前前端域名: ${currentDomain}\n` +
+          `如果后端不在同一域名，请在浏览器控制台执行：\n` +
+          `localStorage.setItem('aliyun_oss_backend_url', 'https://your-backend-server.com/api/upload/oss');`
+        );
       }
     }
     
@@ -393,167 +416,247 @@ const uploadToAliyunOSS = async (file, filename) => {
     formData.append('file', file);
     formData.append('filename', filename);
     
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+    // 使用 fetch API 替代 XMLHttpRequest，对 HTTP/2 支持更好
+    // 如果 fetch 失败，回退到 XMLHttpRequest
+    const uploadWithFetch = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5分钟超时
       
-      // 设置超时（5分钟，适合大文件上传）
-      const timeout = 5 * 60 * 1000;
-      let timeoutId = null;
-      
-      // 清理函数
-      const cleanup = () => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-      };
-      
-      let lastUpdateTime = 0;
-      
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable && onProgress) {
-          const now = Date.now();
-          if (now - lastUpdateTime >= 50 || e.loaded === e.total) {
-            const percent = (e.loaded / e.total) * 100;
-            onProgress(percent, e.loaded, e.total);
-            lastUpdateTime = now;
+      try {
+        // 使用 fetch API，它对 HTTP/2 支持更好
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+          // 不设置 Content-Type，让浏览器自动设置（包含 boundary）
+          // 这样可以避免 HTTP/2 协议错误
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || response.statusText };
           }
+          throw new Error(errorData.error || `上传失败: ${response.statusText} (${response.status})`);
         }
-        // 重置超时计时器（有进度说明连接正常）
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = setTimeout(() => {
-            cleanup();
-            xhr.abort();
-            const appError = handleError(new Error('上传超时，请检查网络连接或文件大小'), {
-              context: 'uploadToAliyunOSS.timeout',
+        
+        const data = await response.json();
+        console.log('[uploadToAliyunOSS] 后端返回数据:', data);
+        
+        if (!data.success && !data.url) {
+          throw new Error(data.error || '上传失败：服务器未返回有效的 URL');
+        }
+        
+        return {
+          url: data.url || data.imageUrl || data.fileUrl || '',
+          thumbnailUrl: data.thumbnailUrl || data.thumbnail_url || null,
+        };
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          throw new Error('上传超时，请检查网络连接或文件大小');
+        }
+        // 如果是网络错误，提供更详细的提示（特别是 GitHub Pages 部署场景）
+        if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('ERR_HTTP2'))) {
+          const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
+          const isGitHubPages = currentDomain.includes('github.io') || currentDomain.includes('github.com');
+          let helpMessage = '';
+          if (isGitHubPages || (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://'))) {
+            helpMessage = `\n\n如果您是在 GitHub Pages 上部署，后端需要单独部署。\n` +
+              `请在浏览器控制台执行以下代码配置后端 URL：\n\n` +
+              `localStorage.setItem('aliyun_oss_backend_url', 'https://your-backend-server.com/api/upload/oss');\n\n` +
+              `然后刷新页面重试。`;
+          }
+          throw new Error(`无法连接到后端服务器。${helpMessage}\n\n当前请求 URL: ${apiUrl}`);
+        }
+        throw error;
+      }
+    };
+    
+    // 如果 fetch 不支持或失败，使用 XMLHttpRequest 作为回退
+    const uploadWithXHR = () => {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        // 设置超时（5分钟，适合大文件上传）
+        const timeout = 5 * 60 * 1000;
+        let timeoutId = null;
+        
+        // 清理函数
+        const cleanup = () => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+        };
+        
+        let lastUpdateTime = 0;
+        
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable && onProgress) {
+            const now = Date.now();
+            if (now - lastUpdateTime >= 50 || e.loaded === e.total) {
+              const percent = (e.loaded / e.total) * 100;
+              onProgress(percent, e.loaded, e.total);
+              lastUpdateTime = now;
+            }
+          }
+        });
+        
+        xhr.addEventListener('load', () => {
+          cleanup();
+          console.log('[uploadToAliyunOSS] 后端响应状态:', xhr.status, xhr.statusText);
+          
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              console.log('[uploadToAliyunOSS] 后端返回数据:', data);
+              
+              if (!data.success && !data.url) {
+                reject(new Error(data.error || '上传失败：服务器未返回有效的 URL'));
+                return;
+              }
+              
+              resolve({
+                url: data.url || data.imageUrl || data.fileUrl || '',
+                thumbnailUrl: data.thumbnailUrl || data.thumbnail_url || null,
+              });
+            } catch (error) {
+              const appError = handleError(error, {
+                context: 'uploadToAliyunOSS.parse',
+                type: ErrorType.PARSE,
+              });
+              reject(appError);
+            }
+          } else {
+            const errorText = xhr.responseText || '';
+            let errorData;
+            const parseResult = safeSync(() => {
+              return JSON.parse(errorText);
+            }, {
+              context: 'uploadToAliyunOSS.parseError',
+              throwError: false,
+            });
+            errorData = parseResult.error ? { error: errorText || xhr.statusText } : parseResult;
+            
+            const appError = handleError(new Error(errorData.error || `上传失败: ${xhr.statusText} (${xhr.status})`), {
+              context: 'uploadToAliyunOSS.response',
               type: ErrorType.NETWORK,
             });
             reject(appError);
-          }, timeout);
-        }
-      });
-      
-      xhr.addEventListener('load', () => {
-        cleanup();
-        console.log('[uploadToAliyunOSS] 后端响应状态:', xhr.status, xhr.statusText);
-        
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            console.log('[uploadToAliyunOSS] 后端返回数据:', data);
-            
-            if (!data.success && !data.url) {
-              reject(new Error(data.error || '上传失败：服务器未返回有效的 URL'));
-              return;
-            }
-            
-            // 返回包含原图和缩略图的对象，供上层统一处理
-            resolve({
-              url: data.url || data.imageUrl || data.fileUrl || '',
-              thumbnailUrl: data.thumbnailUrl || data.thumbnail_url || null,
-            });
-          } catch (error) {
-            const appError = handleError(error, {
-              context: 'uploadToAliyunOSS.parse',
-              type: ErrorType.PARSE,
-            });
-            reject(appError);
           }
-        } else {
-          const errorText = xhr.responseText || '';
-          let errorData;
-          const parseResult = safeSync(() => {
-            return JSON.parse(errorText);
-          }, {
-            context: 'uploadToAliyunOSS.parseError',
-            throwError: false,
+        });
+        
+        xhr.addEventListener('error', (e) => {
+          cleanup();
+          console.error('[uploadToAliyunOSS] 网络错误详情:', e);
+          console.error('[uploadToAliyunOSS] 请求 URL:', apiUrl);
+          console.error('[uploadToAliyunOSS] XHR 状态:', {
+            readyState: xhr.readyState,
+            status: xhr.status,
+            statusText: xhr.statusText,
+            responseText: xhr.responseText?.substring(0, 200),
           });
-          errorData = parseResult.error ? { error: errorText || xhr.statusText } : parseResult;
           
-          const appError = handleError(new Error(errorData.error || `上传失败: ${xhr.statusText} (${xhr.status})`), {
-            context: 'uploadToAliyunOSS.response',
+          let errorMessage = '网络错误，请稍后重试';
+          if (xhr.status === 0) {
+            if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
+              errorMessage = `无法连接到服务器 ${apiUrl}。请检查：\n1. 后端服务器是否正在运行\n2. 服务器地址是否正确\n3. 是否存在 CORS 配置问题\n4. 防火墙是否允许访问`;
+            } else {
+              const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
+              const fullUrl = `${currentDomain}${apiUrl}`;
+              errorMessage = `无法连接到服务器 ${fullUrl}。\n\n` +
+                `如果您是在 GitHub Pages 上部署，后端需要单独部署。\n` +
+                `请在浏览器控制台执行以下代码配置后端 URL：\n\n` +
+                `localStorage.setItem('aliyun_oss_backend_url', 'https://your-backend-server.com/api/upload/oss');\n\n` +
+                `然后刷新页面重试。`;
+            }
+          } else if (xhr.status >= 400) {
+            errorMessage = `服务器错误 (${xhr.status}): ${xhr.statusText || '未知错误'}`;
+          }
+          
+          const appError = handleError(new Error(errorMessage), {
+            context: 'uploadToAliyunOSS.network',
+            type: ErrorType.NETWORK,
+          });
+          reject(appError);
+        });
+        
+        xhr.addEventListener('abort', () => {
+          cleanup();
+          reject(new Error('上传已取消'));
+        });
+        
+        xhr.addEventListener('timeout', () => {
+          cleanup();
+          const appError = handleError(new Error('上传超时，请检查网络连接或文件大小'), {
+            context: 'uploadToAliyunOSS.timeout',
+            type: ErrorType.NETWORK,
+          });
+          reject(appError);
+        });
+        
+        xhr.timeout = timeout;
+        
+        timeoutId = setTimeout(() => {
+          cleanup();
+          xhr.abort();
+          const appError = handleError(new Error('上传超时，请检查网络连接或文件大小'), {
+            context: 'uploadToAliyunOSS.timeout',
+            type: ErrorType.NETWORK,
+          });
+          reject(appError);
+        }, timeout);
+        
+        try {
+          xhr.open('POST', apiUrl);
+          xhr.send(formData);
+        } catch (error) {
+          cleanup();
+          const appError = handleError(error, {
+            context: 'uploadToAliyunOSS.send',
             type: ErrorType.NETWORK,
           });
           reject(appError);
         }
       });
-      
-      xhr.addEventListener('error', (e) => {
-        cleanup();
-        console.error('[uploadToAliyunOSS] 网络错误详情:', e);
-        console.error('[uploadToAliyunOSS] 请求 URL:', apiUrl);
-        console.error('[uploadToAliyunOSS] XHR 状态:', {
-          readyState: xhr.readyState,
-          status: xhr.status,
-          statusText: xhr.statusText,
-          responseText: xhr.responseText?.substring(0, 200),
-        });
-        
-        let errorMessage = '网络错误，请稍后重试';
-        if (xhr.status === 0) {
-          // status 0 通常表示：
-          // 1. 网络连接失败（无法连接到服务器）
-          // 2. CORS 问题
-          // 3. 请求被浏览器阻止
-          if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
-            errorMessage = `无法连接到服务器 ${apiUrl}。请检查：\n1. 后端服务器是否正在运行\n2. 服务器地址是否正确\n3. 是否存在 CORS 配置问题`;
-          } else {
-            errorMessage = `无法连接到服务器。请检查：\n1. 后端服务器是否正在运行\n2. 是否配置了正确的后端 URL（当前使用相对路径: ${apiUrl}）`;
-          }
-        } else if (xhr.status >= 400) {
-          errorMessage = `服务器错误 (${xhr.status}): ${xhr.statusText || '未知错误'}`;
+    };
+    
+    // 检查文件大小，如果太大给出警告
+    const fileSizeMB = file.size / 1024 / 1024;
+    if (fileSizeMB > 20) {
+      console.warn(`[uploadToAliyunOSS] 文件较大 (${fileSizeMB.toFixed(2)}MB)，可能需要较长时间上传`);
+    }
+    
+    // 优先使用 XMLHttpRequest（支持进度），如果遇到 HTTP/2 错误则尝试 fetch
+    try {
+      return await uploadWithXHR();
+    } catch (xhrError) {
+      // 如果是 HTTP/2 协议错误或其他网络错误，尝试使用 fetch
+      const errorMessage = xhrError.message || '';
+      if (errorMessage.includes('HTTP2') || errorMessage.includes('ERR_HTTP2') || 
+          errorMessage.includes('网络错误') || xhrError.name === 'NetworkError') {
+        console.warn('[uploadToAliyunOSS] XMLHttpRequest 失败，尝试使用 Fetch API:', xhrError);
+        try {
+          return await uploadWithFetch();
+        } catch (fetchError) {
+          // 如果 fetch 也失败，抛出原始错误
+          const appError = handleError(fetchError, {
+            context: 'uploadToAliyunOSS.fetch',
+            type: ErrorType.NETWORK,
+          });
+          throw appError;
         }
-        
-        const appError = handleError(new Error(errorMessage), {
-          context: 'uploadToAliyunOSS.network',
-          type: ErrorType.NETWORK,
-        });
-        reject(appError);
-      });
-      
-      xhr.addEventListener('abort', () => {
-        cleanup();
-        reject(new Error('上传已取消'));
-      });
-      
-      xhr.addEventListener('timeout', () => {
-        cleanup();
-        const appError = handleError(new Error('上传超时，请检查网络连接或文件大小'), {
-          context: 'uploadToAliyunOSS.timeout',
-          type: ErrorType.NETWORK,
-        });
-        reject(appError);
-      });
-      
-      // 设置超时
-      xhr.timeout = timeout;
-      
-      // 初始化超时计时器
-      timeoutId = setTimeout(() => {
-        cleanup();
-        xhr.abort();
-        const appError = handleError(new Error('上传超时，请检查网络连接或文件大小'), {
-          context: 'uploadToAliyunOSS.timeout',
-          type: ErrorType.NETWORK,
-        });
-        reject(appError);
-      }, timeout);
-      
-      try {
-        xhr.open('POST', apiUrl);
-        // 不设置 Content-Type，让浏览器自动设置（包含 boundary）
-        // 这样可以避免 HTTP/2 协议错误
-        xhr.send(formData);
-      } catch (error) {
-        cleanup();
-        const appError = handleError(error, {
-          context: 'uploadToAliyunOSS.send',
-          type: ErrorType.NETWORK,
-        });
-        reject(appError);
+      } else {
+        // 其他错误直接抛出
+        throw xhrError;
       }
-    });
+    }
   }
   
   // 前端直传（需要 AccessKey，不安全，仅用于开发测试）

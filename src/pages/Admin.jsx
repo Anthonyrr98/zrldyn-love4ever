@@ -6,8 +6,6 @@ import '../App.css';
 import { uploadImage, getUploadType, setUploadType, UPLOAD_TYPES } from '../utils/upload';
 import { getSupabaseClient } from '../utils/supabaseClient';
 import { UploadProgress } from '../components/UploadProgress';
-import { ConfirmDialog } from '../components/ConfirmDialog';
-import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { getEnvValue, updateEnvOverrides, resetEnvOverrides, ENV_OVERRIDE_KEYS } from '../utils/envConfig';
 import {
   BRAND_LOGO_EVENT,
@@ -51,9 +49,6 @@ const REJECTED_STORAGE_KEY = STORAGE_KEYS.REJECTED_PHOTOS;
 
 export function AdminPage() {
   const adminPassword = getEnvValue('VITE_ADMIN_PASSWORD', 'pic4pick-admin');
-  
-  // 确认对话框
-  const confirmDialog = useConfirmDialog();
 
   // === 原有状态 ===
   // 从 localStorage 加载数据
@@ -1915,20 +1910,11 @@ export function AdminPage() {
   const handleDeleteFromEdit = async () => {
     if (!editingPhotoId) return;
     
-    const confirmed = await confirmDialog.showConfirm({
-      title: '删除作品',
-      message: '确定要删除这个作品吗？此操作不可恢复。',
-      confirmText: '删除',
-      cancelText: '取消',
-      confirmVariant: 'danger',
-    });
-    
-    if (!confirmed) return;
-    
-    // 先获取照片信息，以便删除OSS文件
-    let photoToDelete = null;
-    
-    if (supabase) {
+    if (window.confirm('确定要删除这个作品吗？此操作不可恢复。')) {
+      // 先获取照片信息，以便删除OSS文件
+      let photoToDelete = null;
+      
+      if (supabase) {
         try {
           // 从Supabase获取照片信息
           const { data, error: fetchError } = await supabase
@@ -1957,8 +1943,8 @@ export function AdminPage() {
         photoToDelete = allPhotos.find((p) => p.id === editingPhotoId);
       }
       
-    // 删除OSS中的文件
-    if (photoToDelete) {
+      // 删除OSS中的文件
+      if (photoToDelete) {
         const imageUrl = photoToDelete.image_url || photoToDelete.image || photoToDelete.preview;
         const thumbnailUrl = photoToDelete.thumbnail_url || photoToDelete.thumbnail;
         
@@ -1977,7 +1963,11 @@ export function AdminPage() {
         // 未找到要删除的照片信息（静默处理）
       }
       
+<<<<<<< HEAD
     // 删除数据库记录
+=======
+      // 删除数据库记录
+>>>>>>> parent of b79f62e (优化1.0)
       if (supabase) {
         try {
           await supabase.from('photos').delete().eq('id', editingPhotoId);
@@ -1997,6 +1987,7 @@ export function AdminPage() {
           return;
         }
       }
+<<<<<<< HEAD
 
       try {
       // 从已审核列表删除
@@ -2016,6 +2007,27 @@ export function AdminPage() {
         Storage.set(REJECTED_STORAGE_KEY, rejectedFiltered);
         setRejectedPhotos([...rejectedFiltered]);
       }
+=======
+      
+      try {
+        // 从已审核列表删除
+        const approved = loadApprovedPhotos();
+        const approvedFiltered = approved.filter((p) => p.id !== editingPhotoId);
+        
+        if (approvedFiltered.length !== approved.length) {
+          localStorage.setItem(APPROVED_STORAGE_KEY, JSON.stringify(approvedFiltered));
+          setApprovedPhotos([...approvedFiltered]);
+        }
+
+        // 从已拒绝列表删除
+        const rejected = loadRejectedPhotos();
+        const rejectedFiltered = rejected.filter((p) => p.id !== editingPhotoId);
+        
+        if (rejectedFiltered.length !== rejected.length) {
+          localStorage.setItem(REJECTED_STORAGE_KEY, JSON.stringify(rejectedFiltered));
+          setRejectedPhotos([...rejectedFiltered]);
+        }
+>>>>>>> parent of b79f62e (优化1.0)
 
         setEditingPhotoId(null);
         setSubmitMessage({ type: 'success', text: '删除成功！' });
@@ -2023,12 +2035,18 @@ export function AdminPage() {
           setSubmitMessage({ type: '', text: '' });
         }, 2000);
       } catch (error) {
+<<<<<<< HEAD
       handleError(error, {
         context: 'handleDelete.localStorage',
         type: ErrorType.STORAGE,
         silent: true,
       });
         setSubmitMessage({ type: 'error', text: '删除失败，请重试' });
+=======
+        console.error('Failed to delete:', error);
+        setSubmitMessage({ type: 'error', text: '删除失败，请重试' });
+      }
+>>>>>>> parent of b79f62e (优化1.0)
     }
   };
 
@@ -4520,18 +4538,6 @@ export function AdminPage() {
           </div>
         )}
       </main>
-      
-      {/* 确认对话框 */}
-      <ConfirmDialog
-        isOpen={confirmDialog.isOpen}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-        confirmText={confirmDialog.confirmText}
-        cancelText={confirmDialog.cancelText}
-        confirmVariant={confirmDialog.confirmVariant}
-        onConfirm={confirmDialog.onConfirm}
-        onCancel={confirmDialog.onCancel}
-      />
     </div>
   );
 }
