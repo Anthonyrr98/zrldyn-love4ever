@@ -1964,7 +1964,11 @@ export function AdminPage() {
       }
       
 <<<<<<< HEAD
+<<<<<<< HEAD
     // 删除数据库记录
+=======
+      // 删除数据库记录
+>>>>>>> parent of b79f62e (优化1.0)
 =======
       // 删除数据库记录
 >>>>>>> parent of b79f62e (优化1.0)
@@ -1987,6 +1991,7 @@ export function AdminPage() {
           return;
         }
       }
+<<<<<<< HEAD
 <<<<<<< HEAD
 
       try {
@@ -2029,6 +2034,28 @@ export function AdminPage() {
         }
 >>>>>>> parent of b79f62e (优化1.0)
 
+=======
+      
+      try {
+        // 从已审核列表删除
+        const approved = loadApprovedPhotos();
+        const approvedFiltered = approved.filter((p) => p.id !== editingPhotoId);
+        
+        if (approvedFiltered.length !== approved.length) {
+          localStorage.setItem(APPROVED_STORAGE_KEY, JSON.stringify(approvedFiltered));
+          setApprovedPhotos([...approvedFiltered]);
+        }
+
+        // 从已拒绝列表删除
+        const rejected = loadRejectedPhotos();
+        const rejectedFiltered = rejected.filter((p) => p.id !== editingPhotoId);
+        
+        if (rejectedFiltered.length !== rejected.length) {
+          localStorage.setItem(REJECTED_STORAGE_KEY, JSON.stringify(rejectedFiltered));
+          setRejectedPhotos([...rejectedFiltered]);
+        }
+
+>>>>>>> parent of b79f62e (优化1.0)
         setEditingPhotoId(null);
         setSubmitMessage({ type: 'success', text: '删除成功！' });
         setTimeout(() => {
@@ -2036,12 +2063,18 @@ export function AdminPage() {
         }, 2000);
       } catch (error) {
 <<<<<<< HEAD
+<<<<<<< HEAD
       handleError(error, {
         context: 'handleDelete.localStorage',
         type: ErrorType.STORAGE,
         silent: true,
       });
         setSubmitMessage({ type: 'error', text: '删除失败，请重试' });
+=======
+        console.error('Failed to delete:', error);
+        setSubmitMessage({ type: 'error', text: '删除失败，请重试' });
+      }
+>>>>>>> parent of b79f62e (优化1.0)
 =======
         console.error('Failed to delete:', error);
         setSubmitMessage({ type: 'error', text: '删除失败，请重试' });
