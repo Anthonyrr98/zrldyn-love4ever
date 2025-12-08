@@ -198,5 +198,16 @@ export const StorageString = {
       return false;
     }
   },
+
+  remove(key) {
+    if (!checkBrowser()) return false;
+    try {
+      localStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.error(`[StorageString] 删除键 "${key}" 失败:`, error);
+      return false;
+    }
+  },
 };
 
