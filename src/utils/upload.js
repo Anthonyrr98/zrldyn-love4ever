@@ -394,7 +394,7 @@ const uploadToAliyunOSS = async (file, filename, onProgress) => {
 
     if (!useSign) {
       // 走旧的后端代理模式：POST 文件到后端，再由后端转发到 OSS
-      const apiUrl = getBackendApiUrl('/api/upload/oss');
+    const apiUrl = getBackendApiUrl('/api/upload/oss');
       console.log('[uploadToAliyunOSS] 使用后端代理模式，API:', apiUrl);
 
       const formData = new FormData();
@@ -474,12 +474,12 @@ const uploadToAliyunOSS = async (file, filename, onProgress) => {
        window.location.hostname !== 'localhost' && 
        window.location.hostname !== '127.0.0.1');
     
-    if (isProduction && !apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
+    if (isProduction && !signApiUrl.startsWith('http://') && !signApiUrl.startsWith('https://')) {
       const configuredUrl = StorageString.get(STORAGE_KEYS.ALIYUN_OSS_BACKEND_URL, '');
       if (!configuredUrl) {
         const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
         console.warn(
-          `[uploadToAliyunOSS] 警告：生产环境使用相对路径 (${apiUrl})，但未配置后端 URL。\n` +
+          `[uploadToAliyunOSS] 警告：生产环境使用相对路径 (${signApiUrl})，但未配置后端 URL。\n` +
           `当前前端域名: ${currentDomain}\n` +
           `如果后端不在同一域名，请在浏览器控制台执行：\n` +
           `localStorage.setItem('aliyun_oss_backend_url', 'https://your-backend-server.com/api/upload/oss');`
@@ -489,19 +489,19 @@ const uploadToAliyunOSS = async (file, filename, onProgress) => {
     
     // 1) 请求签名
     const signResponse = await fetch(signApiUrl, {
-      method: 'POST',
+          method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         filename,
         contentType: file.type || 'application/octet-stream',
       }),
     });
-
+        
     if (!signResponse.ok) {
       const errorText = await signResponse.text().catch(() => '');
       throw new Error(errorText || '获取上传签名失败');
-    }
-
+        }
+        
     const signData = await signResponse.json();
     if (!signData.success || !signData.uploadUrl) {
       throw new Error(signData.error || '签名接口未返回 uploadUrl');
@@ -521,7 +521,7 @@ const uploadToAliyunOSS = async (file, filename, onProgress) => {
 
     if (onProgress) {
       onProgress(100, file.size, file.size);
-    }
+            }
 
     return {
       url: signData.publicUrl || signData.uploadUrl,
