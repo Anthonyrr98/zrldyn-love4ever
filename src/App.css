@@ -2377,6 +2377,10 @@ main {
   .lightbox-param-card {
     padding: 10px 8px;
     border-radius: 10px;
+    /* 手机端参数卡片也使用磨砂玻璃效果，不再是完全实心白块 */
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
   }
   .lightbox-param-card .param-label {
     font-size: 0.7rem;
