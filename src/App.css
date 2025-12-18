@@ -2350,7 +2350,9 @@ main {
     gap: 24px;
   }
   .lightbox-media {
-    display: none;
+    /* 手机端显示大图：占据上方区域，宽度铺满，限制高度避免撑破视口 */
+    display: block;
+    max-height: 55vh;
   }
   .lightbox-meta {
     width: 100%;
