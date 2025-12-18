@@ -726,30 +726,32 @@ export function GalleryPage() {
       let province = null; // { id, title }
       let cityName = null;
 
-      // 1）优先使用经纬度判断省份
-      if (photo.latitude != null && photo.longitude != null) {
+      // 1）优先使用文本解析：你在后台填写的省市县 > 经纬度
+      const parts = extractLocationParts(photo.location, photo.country);
+      if (parts.province) {
+        province = {
+          id: parts.province.id || parts.province.title,
+          title: parts.province.title,
+        };
+      }
+      cityName =
+        parts.county ||
+        parts.city ||
+        photo.location ||
+        photo.country ||
+        '未知地点';
+
+      // 2）如果文字里完全看不出省份，再尝试用经纬度推断
+      if (!province && photo.latitude != null && photo.longitude != null) {
         const lat = Number(photo.latitude);
         const lng = Number(photo.longitude);
         if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
           province = getProvinceFromCoords(lat, lng);
-          cityName = photo.location || photo.country || '未知地点';
+          // 如果之前 cityName 为空，再兜底
+          if (!cityName) {
+            cityName = photo.location || photo.country || '未知地点';
+          }
         }
-      }
-
-      // 2）如果没有经纬度或无法判断省份，使用文本解析
-      if (!province) {
-        const parts = extractLocationParts(photo.location, photo.country);
-        // 旧实现里 parts.province 是从 provinceCityData 里取出的对象
-        // 这里继续沿用它的结构，只关心 id / title 两个字段
-        province = parts.province
-          ? { id: parts.province.id || parts.province.title, title: parts.province.title }
-          : null;
-        cityName =
-          parts.county ||
-          parts.city ||
-          photo.location ||
-          photo.country ||
-          '未知地点';
       }
 
       // 3）如果还是找不到，尝试匹配预定义的城市列表（向后兼容）
