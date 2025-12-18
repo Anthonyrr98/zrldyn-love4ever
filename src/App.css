@@ -761,8 +761,9 @@ main {
 }
 
 .curation-panel-toggle {
-  position: absolute;
-  top: 12px;
+  /* 让下拉箭头在列表滚动时始终固定在面板顶部 */
+  position: sticky;
+  top: 8px;
   left: 50%;
   transform: translateX(-50%);
   width: 80px;

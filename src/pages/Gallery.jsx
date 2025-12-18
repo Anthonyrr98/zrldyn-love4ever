@@ -727,7 +727,7 @@ export function GalleryPage() {
     approvedPhotos.forEach((photo) => {
       let province = null; // { id, title }
       let cityName = null;
-
+      
       // 1）优先使用文本解析：你在后台填写的省市县 > 经纬度
       const parts = extractLocationParts(photo.location, photo.country);
       if (parts.province) {
@@ -751,25 +751,25 @@ export function GalleryPage() {
           province = getProvinceFromCoords(lat, lng);
           // 如果之前 cityName 为空，再兜底
           if (!cityName) {
-            cityName = photo.location || photo.country || '未知地点';
-          }
+          cityName = photo.location || photo.country || '未知地点';
         }
       }
-
+      }
+      
       // 3）如果还是找不到，尝试匹配预定义的城市列表（向后兼容）
       if (!province) {
-        const location = normalizeText(photo.location);
-        const country = normalizeText(photo.country);
+      const location = normalizeText(photo.location);
+      const country = normalizeText(photo.country);
 
         for (const p of provinceCityData) {
           const targets = [...p.cities];
           if (MUNICIPALITY_PROVINCES.has(p.id)) {
             targets.push(p.title);
-          }
+        }
 
           for (const city of targets) {
             const cityLower = normalizeText(city);
-            if (location.includes(cityLower) || country.includes(cityLower)) {
+          if (location.includes(cityLower) || country.includes(cityLower)) {
               province = { id: p.id, title: p.title };
               cityName = city;
               break;
@@ -778,7 +778,7 @@ export function GalleryPage() {
           if (province) break;
         }
       }
-
+      
       // 4）如果最终能确定某个省份，则把照片归入对应的「省份-城市」桶里
       if (province && cityName) {
         const provinceId = province.id || province.title || 'unknown';
@@ -795,7 +795,7 @@ export function GalleryPage() {
         }
 
         map.get(key).photos.push(photo);
-      }
+          }
     });
 
     // 每个城市内部按时间从新到旧排序
@@ -813,11 +813,11 @@ export function GalleryPage() {
   const curationGroups = useMemo(() => {
     // 使用 cityPhotoMap 动态构建省份-城市分组，不再依赖固定的 provinceCityData 顺序
     const provinceMap = new Map();
-
+    
     cityPhotoMap.forEach((group) => {
       const { provinceId, provinceTitle, cityName, photos } = group;
       if (!provinceId || !provinceTitle || !cityName || !photos || photos.length === 0) return;
-
+      
       if (!provinceMap.has(provinceId)) {
         provinceMap.set(provinceId, {
           id: provinceId,
@@ -825,7 +825,7 @@ export function GalleryPage() {
           cities: new Map(),
         });
       }
-
+      
       const provinceData = provinceMap.get(provinceId);
       if (!provinceData.cities.has(cityName)) {
         // 获取城市坐标：优先使用照片的经纬度，其次使用预定义的坐标
@@ -841,14 +841,14 @@ export function GalleryPage() {
             lng: Number(photos[0].longitude),
           };
         }
-
+        
         provinceData.cities.set(cityName, {
           id: `${provinceId}-${cityName}`,
-          label: cityName,
+              label: cityName,
           image: photos[0].thumbnail || photos[0].image,
           photoCount: photos.length,
-          lat: coords.lat ?? null,
-          lng: coords.lng ?? null,
+              lat: coords.lat ?? null,
+              lng: coords.lng ?? null,
           provinceId,
         });
       } else {
@@ -865,13 +865,13 @@ export function GalleryPage() {
       ); // 省内城市按照片数量排序
 
       const totalCount = items.reduce((sum, item) => sum + item.photoCount, 0);
-
-      return {
+        
+        return {
         id: provinceData.id,
         title: provinceData.title,
-        items,
+          items,
         totalCount,
-      };
+        };
     });
 
     // 省份整体按总照片数量排序（多的在上），数量相同时按名称排序
