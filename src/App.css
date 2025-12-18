@@ -2354,6 +2354,33 @@ main {
     display: block;
     max-height: 55vh;
   }
+  /* 手机端参数区整体更紧凑一些，占用更少高度 */
+  .lightbox-meta {
+    width: 100%;
+    gap: 16px;
+  }
+  .lightbox-title-section {
+    padding-bottom: 12px;
+  }
+  .lightbox-meta h3 {
+    font-size: 1.3rem;
+  }
+  .subtitle {
+    font-size: 0.9rem;
+  }
+  .lightbox-params-grid {
+    gap: 10px;
+  }
+  .lightbox-param-card {
+    padding: 12px 10px;
+    border-radius: 12px;
+  }
+  .lightbox-param-card .param-label {
+    font-size: 0.75rem;
+  }
+  .lightbox-param-card .param-value {
+    font-size: 1rem;
+  }
   .lightbox-meta {
     width: 100%;
   }
