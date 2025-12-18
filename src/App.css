@@ -2350,36 +2350,36 @@ main {
     gap: 24px;
   }
   .lightbox-media {
-    /* 手机端显示大图：占据上方区域，宽度铺满，限制高度避免撑破视口 */
+    /* 手机端显示大图：占据更多上方区域，宽度铺满 */
     display: block;
-    max-height: 55vh;
+    max-height: 68vh;
   }
   /* 手机端参数区整体更紧凑一些，占用更少高度 */
   .lightbox-meta {
     width: 100%;
-    gap: 16px;
+    gap: 12px;
   }
   .lightbox-title-section {
-    padding-bottom: 12px;
+    padding-bottom: 10px;
   }
   .lightbox-meta h3 {
-    font-size: 1.3rem;
+    font-size: 1.15rem;
   }
   .subtitle {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
   .lightbox-params-grid {
-    gap: 10px;
+    gap: 8px;
   }
   .lightbox-param-card {
-    padding: 12px 10px;
-    border-radius: 12px;
+    padding: 10px 8px;
+    border-radius: 10px;
   }
   .lightbox-param-card .param-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
   .lightbox-param-card .param-value {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
   .lightbox-meta {
     width: 100%;
