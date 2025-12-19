@@ -631,53 +631,62 @@ export function GalleryPage() {
     
     // 使用省份主要城市的经纬度范围进行粗略判断
     // 这是一个简化方案，更精确的方案需要使用省份边界数据
+    // 注意：顺序很重要！较小的、边界明确的省份应该排在前面，避免被大省份误判
     const provinceRanges = [
-      { id: 'beijing', title: '北京', latRange: [39.4, 40.2], lngRange: [116.0, 116.8] },
-      { id: 'tianjin', title: '天津', latRange: [38.5, 40.0], lngRange: [116.7, 118.0] },
-      { id: 'shanghai', title: '上海', latRange: [30.7, 31.9], lngRange: [120.8, 122.0] },
-      { id: 'chongqing', title: '重庆', latRange: [28.1, 32.2], lngRange: [105.2, 110.2] },
-      { id: 'hebei', title: '河北', latRange: [36.0, 42.6], lngRange: [113.4, 119.8] },
-      { id: 'shanxi', title: '山西', latRange: [34.5, 40.7], lngRange: [110.2, 114.6] },
-      { id: 'liaoning', title: '辽宁', latRange: [38.7, 43.4], lngRange: [118.8, 125.5] },
-      { id: 'jilin', title: '吉林', latRange: [40.8, 46.3], lngRange: [121.3, 131.2] },
-      { id: 'heilongjiang', title: '黑龙江', latRange: [43.4, 53.6], lngRange: [121.1, 135.1] },
-      { id: 'jiangsu', title: '江苏', latRange: [30.7, 35.1], lngRange: [116.2, 121.9] },
-      { id: 'zhejiang', title: '浙江', latRange: [27.0, 31.5], lngRange: [118.0, 123.0] },
-      { id: 'anhui', title: '安徽', latRange: [29.4, 34.7], lngRange: [114.9, 119.8] },
-      { id: 'fujian', title: '福建', latRange: [23.5, 28.3], lngRange: [115.8, 120.7] },
-      { id: 'jiangxi', title: '江西', latRange: [24.3, 30.0], lngRange: [113.5, 118.5] },
-      { id: 'shandong', title: '山东', latRange: [34.4, 38.4], lngRange: [114.3, 122.7] },
-      { id: 'henan', title: '河南', latRange: [31.2, 36.4], lngRange: [110.3, 116.6] },
-      { id: 'hubei', title: '湖北', latRange: [29.0, 33.3], lngRange: [108.2, 116.1] },
-      { id: 'hunan', title: '湖南', latRange: [24.6, 30.1], lngRange: [108.8, 114.3] },
-      { id: 'guangdong', title: '广东', latRange: [20.1, 25.5], lngRange: [109.6, 117.3] },
-      { id: 'guangxi', title: '广西', latRange: [20.9, 26.4], lngRange: [104.3, 112.0] },
-      { id: 'hainan', title: '海南', latRange: [18.1, 20.1], lngRange: [108.6, 111.0] },
-      // 为了避免把云南西北部（如丽江一带，经度约 100°E）误判成四川，
-      // 略微收窄四川的西侧经度范围，让 100°E 左右更倾向归入云南。
-      { id: 'sichuan', title: '四川', latRange: [26.0, 34.3], lngRange: [100.8, 108.5] },
-      { id: 'guizhou', title: '贵州', latRange: [24.6, 29.2], lngRange: [103.6, 109.3] },
-      { id: 'yunnan', title: '云南', latRange: [21.1, 29.2], lngRange: [97.5, 106.2] },
-      { id: 'shaanxi', title: '陕西', latRange: [31.4, 39.6], lngRange: [105.5, 111.3] },
-      // 调整顺序：青海优先于甘肃，避免西宁（青海省会）被误判为甘肃
-      // 西宁坐标约：36.6°N, 101.8°E
-      { id: 'qinghai', title: '青海', latRange: [31.6, 39.2], lngRange: [89.4, 103.0] },
-      { id: 'gansu', title: '甘肃', latRange: [32.1, 42.8], lngRange: [92.3, 108.7] },
-      { id: 'neimenggu', title: '内蒙古', latRange: [37.4, 53.3], lngRange: [97.2, 126.0] },
-      { id: 'xinjiang', title: '新疆', latRange: [34.3, 49.2], lngRange: [73.5, 96.4] },
-      { id: 'ningxia', title: '宁夏', latRange: [35.2, 39.4], lngRange: [104.2, 107.6] },
-      { id: 'xizang', title: '西藏', latRange: [26.9, 36.5], lngRange: [78.4, 99.1] },
-      { id: 'taiwan', title: '台湾', latRange: [21.9, 25.3], lngRange: [119.3, 122.0] },
-      { id: 'hongkong', title: '香港', latRange: [22.1, 22.6], lngRange: [113.8, 114.5] },
-      { id: 'macao', title: '澳门', latRange: [22.1, 22.2], lngRange: [113.5, 113.6] },
+      // 直辖市和特别行政区（范围小，优先匹配）
+      { id: 'beijing', title: '北京', latRange: [39.4, 40.2], lngRange: [116.0, 116.8], priority: 1 },
+      { id: 'tianjin', title: '天津', latRange: [38.5, 40.0], lngRange: [116.7, 118.0], priority: 1 },
+      { id: 'shanghai', title: '上海', latRange: [30.7, 31.9], lngRange: [120.8, 122.0], priority: 1 },
+      { id: 'chongqing', title: '重庆', latRange: [28.1, 32.2], lngRange: [105.2, 110.2], priority: 1 },
+      { id: 'hongkong', title: '香港', latRange: [22.1, 22.6], lngRange: [113.8, 114.5], priority: 1 },
+      { id: 'macao', title: '澳门', latRange: [22.1, 22.2], lngRange: [113.5, 113.6], priority: 1 },
+      { id: 'taiwan', title: '台湾', latRange: [21.9, 25.3], lngRange: [119.3, 122.0], priority: 1 },
+      { id: 'hainan', title: '海南', latRange: [18.1, 20.1], lngRange: [108.6, 111.0], priority: 1 },
+      { id: 'ningxia', title: '宁夏', latRange: [35.2, 39.4], lngRange: [104.2, 107.6], priority: 1 },
+      
+      // 较小的省份（优先匹配，避免被大省份覆盖）
+      { id: 'jiangxi', title: '江西', latRange: [24.3, 30.0], lngRange: [113.5, 118.5], priority: 2 },
+      { id: 'zhejiang', title: '浙江', latRange: [27.0, 31.5], lngRange: [118.0, 123.0], priority: 2 },
+      { id: 'fujian', title: '福建', latRange: [23.5, 28.3], lngRange: [115.8, 120.7], priority: 2 },
+      { id: 'anhui', title: '安徽', latRange: [29.4, 34.7], lngRange: [114.9, 119.8], priority: 2 },
+      { id: 'jiangsu', title: '江苏', latRange: [30.7, 35.1], lngRange: [116.2, 121.9], priority: 2 },
+      { id: 'shandong', title: '山东', latRange: [34.4, 38.4], lngRange: [114.3, 122.7], priority: 2 },
+      { id: 'henan', title: '河南', latRange: [31.2, 36.4], lngRange: [110.3, 116.6], priority: 2 },
+      { id: 'hubei', title: '湖北', latRange: [29.0, 33.3], lngRange: [108.2, 116.1], priority: 2 },
+      { id: 'hunan', title: '湖南', latRange: [24.6, 30.1], lngRange: [108.8, 114.3], priority: 2 },
+      { id: 'guangdong', title: '广东', latRange: [20.1, 25.5], lngRange: [109.6, 117.3], priority: 2 },
+      { id: 'guangxi', title: '广西', latRange: [20.9, 26.4], lngRange: [104.3, 112.0], priority: 2 },
+      { id: 'guizhou', title: '贵州', latRange: [24.6, 29.2], lngRange: [103.6, 109.3], priority: 2 },
+      { id: 'shanxi', title: '山西', latRange: [34.5, 40.7], lngRange: [110.2, 114.6], priority: 2 },
+      { id: 'shaanxi', title: '陕西', latRange: [31.4, 39.6], lngRange: [105.5, 111.3], priority: 2 },
+      { id: 'liaoning', title: '辽宁', latRange: [38.7, 43.4], lngRange: [118.8, 125.5], priority: 2 },
+      { id: 'jilin', title: '吉林', latRange: [40.8, 46.3], lngRange: [121.3, 131.2], priority: 2 },
+      
+      // 中等省份
+      { id: 'hebei', title: '河北', latRange: [36.0, 42.6], lngRange: [113.4, 119.8], priority: 3 },
+      { id: 'heilongjiang', title: '黑龙江', latRange: [43.4, 53.6], lngRange: [121.1, 135.1], priority: 3 },
+      { id: 'sichuan', title: '四川', latRange: [26.0, 34.3], lngRange: [100.8, 108.5], priority: 3 },
+      { id: 'yunnan', title: '云南', latRange: [21.1, 29.2], lngRange: [97.5, 106.2], priority: 3 },
+      
+      // 大省份和边界重叠的省份（放在后面，避免误判）
+      // 青海优先于甘肃，避免西宁（青海省会，36.6°N, 101.8°E）被误判为甘肃
+      { id: 'qinghai', title: '青海', latRange: [31.6, 39.2], lngRange: [89.4, 103.0], priority: 4 },
+      { id: 'gansu', title: '甘肃', latRange: [32.1, 42.8], lngRange: [92.3, 108.7], priority: 4 },
+      { id: 'xizang', title: '西藏', latRange: [26.9, 36.5], lngRange: [78.4, 99.1], priority: 4 },
+      { id: 'xinjiang', title: '新疆', latRange: [34.3, 49.2], lngRange: [73.5, 96.4], priority: 4 },
+      { id: 'neimenggu', title: '内蒙古', latRange: [37.4, 53.3], lngRange: [97.2, 126.0], priority: 5 }, // 最大，最后匹配
     ];
     
-    for (const province of provinceRanges) {
+    // 按优先级排序：priority 越小越优先
+    const sortedProvinces = [...provinceRanges].sort((a, b) => a.priority - b.priority);
+    
+    // 匹配时优先返回优先级高的省份
+    for (const province of sortedProvinces) {
       if (
         lat >= province.latRange[0] && lat <= province.latRange[1] &&
         lng >= province.lngRange[0] && lng <= province.lngRange[1]
       ) {
-        return province;
+        return { id: province.id, title: province.title };
       }
     }
     return null;
@@ -694,11 +703,26 @@ export function GalleryPage() {
     let city = null;
     let county = null;
     
-    // 查找省份
-    for (const p of provinces) {
-      if (text.includes(p)) {
-        province = provinceCityData.find(pr => pr.title === p);
-        break;
+    // 优先从 country 字段查找省份（因为 country 字段通常存储省份信息）
+    if (country) {
+      for (const p of provinces) {
+        // 精确匹配省份名（避免部分匹配导致错误）
+        const provinceRegex = new RegExp(`^${p}|${p}$|\\s${p}\\s|${p}省|${p}市|${p}自治区|${p}特别行政区`);
+        if (provinceRegex.test(country)) {
+          province = provinceCityData.find(pr => pr.title === p);
+          break;
+        }
+      }
+    }
+    
+    // 如果 country 中没有找到省份，再从 location 中查找
+    if (!province && location) {
+      for (const p of provinces) {
+        const provinceRegex = new RegExp(`^${p}|${p}$|\\s${p}\\s|${p}省|${p}市|${p}自治区|${p}特别行政区`);
+        if (provinceRegex.test(location)) {
+          province = provinceCityData.find(pr => pr.title === p);
+          break;
+        }
       }
     }
     
@@ -761,17 +785,34 @@ export function GalleryPage() {
       }
       
       // 3）如果还是找不到，尝试匹配预定义的城市列表（向后兼容）
-      // 注意：需要按照特定顺序匹配，避免城市名冲突（如西宁应该在青海，而不是甘肃）
+      // 注意：需要按照特定顺序匹配，避免城市名冲突
+      // 优先级：小省份 > 中等省份 > 大省份，避免边界城市被误判
       if (!province) {
       const location = normalizeText(photo.location);
       const country = normalizeText(photo.country);
 
-        // 优先匹配青海的城市（避免西宁被误判为甘肃）
+        // 定义省份优先级：小省份优先，避免被大省份误判
+        const provincePriority = {
+          // 直辖市和特别行政区（最高优先级）
+          'beijing': 1, 'tianjin': 1, 'shanghai': 1, 'chongqing': 1,
+          'hongkong': 1, 'macao': 1, 'taiwan': 1, 'hainan': 1, 'ningxia': 1,
+          // 小省份
+          'jiangxi': 2, 'zhejiang': 2, 'fujian': 2, 'anhui': 2, 'jiangsu': 2,
+          'shandong': 2, 'henan': 2, 'hubei': 2, 'hunan': 2, 'guangdong': 2,
+          'guangxi': 2, 'guizhou': 2, 'shanxi': 2, 'shaanxi': 2, 'liaoning': 2,
+          'jilin': 2, 'hebei': 2, 'heilongjiang': 2, 'sichuan': 2, 'yunnan': 2,
+          // 边界重叠的省份（需要特别注意）
+          'qinghai': 3, // 青海优先于甘肃，避免西宁被误判
+          'gansu': 4,
+          'xizang': 4, 'xinjiang': 4,
+          'neimenggu': 5, // 最大，最后匹配
+        };
+
+        // 按优先级排序省份
         const sortedProvinces = [...provinceCityData].sort((a, b) => {
-          // 青海优先
-          if (a.id === 'qinghai') return -1;
-          if (b.id === 'qinghai') return 1;
-          return 0;
+          const priorityA = provincePriority[a.id] || 99;
+          const priorityB = provincePriority[b.id] || 99;
+          return priorityA - priorityB;
         });
 
         for (const p of sortedProvinces) {
@@ -782,7 +823,9 @@ export function GalleryPage() {
 
           for (const city of targets) {
             const cityLower = normalizeText(city);
-          if (location.includes(cityLower) || country.includes(cityLower)) {
+          // 使用精确匹配或包含匹配，避免部分匹配导致错误
+          if (location === cityLower || location.includes(cityLower) || 
+              country === cityLower || country.includes(cityLower)) {
               province = { id: p.id, title: p.title };
               cityName = city;
               break;

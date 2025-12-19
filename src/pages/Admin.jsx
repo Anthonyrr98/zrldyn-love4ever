@@ -1259,14 +1259,35 @@ export function AdminPage() {
                   const formattedAddress = data.regeocode.formatted_address;
                   
                   // 提取省份信息（优先使用，最准确）
+                  // 高德地图API返回的addressComponent.province字段是最准确的省份信息
                   if (addressComponent.province) {
-                    // 高德地图返回的省份可能包含"省"、"市"、"自治区"等后缀，需要清理
-                    let provinceName = addressComponent.province.replace(/省|市|自治区|特别行政区/g, '').trim();
-                    // 如果country字段为空或只包含"中国"，则使用省份作为country
-                    if (!updates.country || updates.country === '中国') {
-                      updates.country = provinceName;
-                      hasUpdates = true;
+                    // 高德地图返回的省份可能包含"省"、"市"、"自治区"、"特别行政区"等后缀，需要清理
+                    let provinceName = addressComponent.province
+                      .replace(/省|市|自治区|特别行政区|维吾尔自治区|回族自治区|壮族自治区|藏族自治区/g, '')
+                      .trim();
+                    
+                    // 特殊处理：直辖市和自治区
+                    // 北京、上海、天津、重庆已经是城市名，不需要处理
+                    // 但需要确保省份名正确
+                    if (provinceName === '北京' || provinceName === '上海' || provinceName === '天津' || provinceName === '重庆') {
+                      // 直辖市保持不变
+                    } else if (addressComponent.province.includes('自治区')) {
+                      // 对于自治区，保留完整名称（如"内蒙古"、"新疆"、"西藏"、"宁夏"、"广西"）
+                      if (addressComponent.province.includes('内蒙古')) provinceName = '内蒙古';
+                      else if (addressComponent.province.includes('新疆')) provinceName = '新疆';
+                      else if (addressComponent.province.includes('西藏')) provinceName = '西藏';
+                      else if (addressComponent.province.includes('宁夏')) provinceName = '宁夏';
+                      else if (addressComponent.province.includes('广西')) provinceName = '广西';
                     }
+                    
+                    // 将省份信息保存到country字段（这是最重要的，确保后续分类正确）
+                    updates.country = provinceName;
+                    hasUpdates = true;
+                    
+                    console.log('提取省份信息:', { 
+                      original: addressComponent.province, 
+                      cleaned: provinceName 
+                    });
                   }
                   
                   // 提取国家/地区信息（如果省份未设置）
