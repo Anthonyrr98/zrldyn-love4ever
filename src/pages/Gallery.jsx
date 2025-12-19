@@ -562,6 +562,7 @@ export function GalleryPage() {
   const loadMoreRef = useRef(null);
   const mapContainerRef = useRef(null);
   const mapInstance = useRef(null); // 发现页主地图：高德 Map 实例
+  const tabStripRef = useRef(null); // 标签页容器引用
   const exploreMarkersRef = useRef([]); // 发现页自定义圆点
   const currentLocationMarkerRef = useRef(null); // 当前浏览器位置标记
   const geoMapContainerRef = useRef(null);
@@ -1387,6 +1388,39 @@ export function GalleryPage() {
     setDisplayedCount(12);
   }, [activeFilter]);
 
+  // 更新标签页滑动背景位置
+  useEffect(() => {
+    const updateTabIndicator = () => {
+      if (!tabStripRef.current) return;
+      
+      const activeTab = tabStripRef.current.querySelector('.tab.active');
+      if (!activeTab) return;
+
+      const stripRect = tabStripRef.current.getBoundingClientRect();
+      const tabRect = activeTab.getBoundingClientRect();
+      
+      const left = tabRect.left - stripRect.left;
+      const width = tabRect.width;
+      
+      tabStripRef.current.style.setProperty('--tab-indicator-left', `${left}px`);
+      tabStripRef.current.style.setProperty('--tab-indicator-width', `${width}px`);
+    };
+
+    // 初始计算
+    updateTabIndicator();
+
+    // 监听窗口大小变化
+    window.addEventListener('resize', updateTabIndicator);
+    
+    // 延迟一下确保 DOM 已更新
+    const timeout = setTimeout(updateTabIndicator, 100);
+
+    return () => {
+      window.removeEventListener('resize', updateTabIndicator);
+      clearTimeout(timeout);
+    };
+  }, [activeFilter]);
+
   // 获取当前要显示的照片
   const displayedPhotos = useMemo(() => {
     return filteredPhotos.slice(0, displayedCount);
@@ -2071,7 +2105,7 @@ export function GalleryPage() {
         <section id="gallery-view" className={`screen ${activeView === 'gallery-view' ? 'active' : ''}`}>
           {filteredPhotos.length > 0 && (
           <>
-          <div className="tab-strip">
+          <div className="tab-strip" ref={tabStripRef}>
             {tabs.map((tab) => (
               <button
                 key={tab.id}
