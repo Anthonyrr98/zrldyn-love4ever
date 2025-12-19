@@ -282,27 +282,11 @@ main {
   display: block;
 }
 
-/* explore icon: simple compass glyph */
-.icon-compass::before,
-.icon-compass::after {
-  content: '';
-  position: absolute;
-  border-radius: 999px;
-}
-
-.icon-compass::before {
-  inset: 2px;
-  border: 2px solid currentColor;
-}
-
-.icon-compass::after {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  border: 2px solid currentColor;
-  transform: rotate(45deg);
-  top: 3px;
-  left: 3px;
+/* explore icon: SVG compass icon */
+.icon-compass svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 /* 默认状态：轻盈一点 */
