@@ -120,7 +120,6 @@ export function AdminPage() {
   const [searchResults, setSearchResults] = useState([]);
   const [submitMessage, setSubmitMessage] = useState({ type: '', text: '' });
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' | 'pending' | 'approved' | 'rejected' | 'tools' | 'config'
-  const [gearInfoTab, setGearInfoTab] = useState('camera'); // 'camera' | 'location' - 相机参数和地理位置信息的切换标签
   // 使用文件上传管理 hook
   const {
     isUploading,
@@ -2753,105 +2752,52 @@ export function AdminPage() {
                     <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  相机参数与地理位置
+                  相机参数
                 </h2>
                 
-                {/* 标签页切换 */}
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '8px', 
-                  marginBottom: '20px',
-                  borderBottom: '1px solid var(--border)',
-                  paddingBottom: '8px'
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => setGearInfoTab('camera')}
-                    style={{
-                      padding: '8px 16px',
-                      background: gearInfoTab === 'camera' ? 'var(--accent)' : 'transparent',
-                      color: gearInfoTab === 'camera' ? 'var(--bg)' : 'var(--text)',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
-                      fontWeight: gearInfoTab === 'camera' ? '500' : '400',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}>
-                      <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 4H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    相机参数
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGearInfoTab('location')}
-                    style={{
-                      padding: '8px 16px',
-                      background: gearInfoTab === 'location' ? 'var(--accent)' : 'transparent',
-                      color: gearInfoTab === 'location' ? 'var(--bg)' : 'var(--text)',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
-                      fontWeight: gearInfoTab === 'location' ? '500' : '400',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}>
-                      <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    地理位置
-                  </button>
-                </div>
-
-                {/* 相机参数内容 */}
-                {gearInfoTab === 'camera' && (
-                  <div className="form-grid" style={{ marginBottom: '20px' }}>
-                    <div className="form-group">
-                      <label>焦距</label>
-                      <input
-                        type="text"
-                        name="focal"
-                        placeholder="例如：50mm"
-                        value={uploadForm.focal}
-                        onChange={handleFormChange}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>光圈</label>
-                      <input
-                        type="text"
-                        name="aperture"
-                        placeholder="例如：f/2.8"
-                        value={uploadForm.aperture}
-                        onChange={handleFormChange}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>快门</label>
-                      <input
-                        type="text"
-                        name="shutter"
-                        placeholder="例如：1/125s"
-                        value={uploadForm.shutter}
-                        onChange={handleFormChange}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>ISO</label>
-                      <input
-                        type="text"
-                        name="iso"
-                        placeholder="例如：200"
-                        value={uploadForm.iso}
-                        onChange={handleFormChange}
-                      />
-                    </div>
-                    <div className="form-group full-width">
+                {/* 相机参数 */}
+                <div className="form-grid" style={{ marginBottom: '20px' }}>
+                  <div className="form-group">
+                    <label>焦距</label>
+                    <input
+                      type="text"
+                      name="focal"
+                      placeholder="例如：50mm"
+                      value={uploadForm.focal}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>光圈</label>
+                    <input
+                      type="text"
+                      name="aperture"
+                      placeholder="例如：f/2.8"
+                      value={uploadForm.aperture}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>快门</label>
+                    <input
+                      type="text"
+                      name="shutter"
+                      placeholder="例如：1/125s"
+                      value={uploadForm.shutter}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>ISO</label>
+                    <input
+                      type="text"
+                      name="iso"
+                      placeholder="例如：200"
+                      value={uploadForm.iso}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                  <div className="form-group full-width">
                     <label>相机</label>
                     <div style={{ position: 'relative' }}>
                       <input
@@ -3018,96 +2964,102 @@ export function AdminPage() {
                     </div>
                   </div>
                 </div>
-                )}
+              </div>
 
-                {/* 地理位置信息内容 */}
-                {gearInfoTab === 'location' && (
-                  <div className="form-grid" style={{ marginBottom: '20px' }}>
-                    {uploadForm.latitude != null && uploadForm.longitude != null ? (
-                      <>
-                        <div className="form-group full-width">
-                          <label>GPS 坐标</label>
-                          <div style={{ 
-                            padding: '16px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            borderRadius: '8px',
-                            border: '1px solid var(--border)'
-                          }}>
-                            <div style={{ fontSize: '0.9rem', color: 'var(--text)', lineHeight: '1.8' }}>
-                              <div style={{ marginBottom: '8px' }}>
-                                <span style={{ color: 'var(--muted)', marginRight: '8px' }}>纬度:</span>
-                                <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>{Number(uploadForm.latitude).toFixed(6)}</span>
-                              </div>
-                              <div style={{ marginBottom: '8px' }}>
-                                <span style={{ color: 'var(--muted)', marginRight: '8px' }}>经度:</span>
-                                <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>{Number(uploadForm.longitude).toFixed(6)}</span>
-                              </div>
-                              {uploadForm.altitude != null && (
-                                <div>
-                                  <span style={{ color: 'var(--muted)', marginRight: '8px' }}>海拔:</span>
-                                  <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>{Number(uploadForm.altitude).toFixed(2)}m</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="form-group full-width">
-                          <button
-                            type="button"
-                            onClick={() => setShowLocationPicker(true)}
-                            style={{
-                              padding: '10px 16px',
-                              background: 'var(--accent)',
-                              border: 'none',
-                              borderRadius: '8px',
-                              color: 'var(--bg)',
-                              cursor: 'pointer',
-                              fontSize: '0.9rem',
-                              fontWeight: '500',
-                              width: '100%'
-                            }}
-                          >
-                            在地图上修改位置
-                          </button>
-                        </div>
-                      </>
-                    ) : (
+              {/* 地理位置信息 */}
+              <div className="form-section">
+                <h2 className="form-section-title">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--accent)' }}>
+                    <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  地理位置信息
+                </h2>
+                <div className="form-grid" style={{ marginBottom: '20px' }}>
+                  {uploadForm.latitude != null && uploadForm.longitude != null ? (
+                    <>
                       <div className="form-group full-width">
+                        <label>GPS 坐标</label>
                         <div style={{ 
-                          padding: '24px',
-                          textAlign: 'center',
+                          padding: '16px',
                           background: 'rgba(255, 255, 255, 0.03)',
                           borderRadius: '8px',
                           border: '1px solid var(--border)'
                         }}>
-                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--muted)', marginBottom: '12px' }}>
-                            <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          <p style={{ color: 'var(--muted)', marginBottom: '16px', fontSize: '0.9rem' }}>
-                            照片中未检测到 GPS 信息
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => setShowLocationPicker(true)}
-                            style={{
-                              padding: '10px 20px',
-                              background: 'var(--accent)',
-                              border: 'none',
-                              borderRadius: '8px',
-                              color: 'var(--bg)',
-                              cursor: 'pointer',
-                              fontSize: '0.9rem',
-                              fontWeight: '500',
-                            }}
-                          >
-                            在地图上选择位置
-                          </button>
+                          <div style={{ fontSize: '0.9rem', color: 'var(--text)', lineHeight: '1.8' }}>
+                            <div style={{ marginBottom: '8px' }}>
+                              <span style={{ color: 'var(--muted)', marginRight: '8px' }}>纬度:</span>
+                              <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>{Number(uploadForm.latitude).toFixed(6)}</span>
+                            </div>
+                            <div style={{ marginBottom: '8px' }}>
+                              <span style={{ color: 'var(--muted)', marginRight: '8px' }}>经度:</span>
+                              <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>{Number(uploadForm.longitude).toFixed(6)}</span>
+                            </div>
+                            {uploadForm.altitude != null && (
+                              <div>
+                                <span style={{ color: 'var(--muted)', marginRight: '8px' }}>海拔:</span>
+                                <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>{Number(uploadForm.altitude).toFixed(2)}m</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
+                      <div className="form-group full-width">
+                        <button
+                          type="button"
+                          onClick={() => setShowLocationPicker(true)}
+                          style={{
+                            padding: '10px 16px',
+                            background: 'var(--accent)',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: 'var(--bg)',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: '500',
+                            width: '100%'
+                          }}
+                        >
+                          在地图上修改位置
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="form-group full-width">
+                      <div style={{ 
+                        padding: '24px',
+                        textAlign: 'center',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)'
+                      }}>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--muted)', marginBottom: '12px' }}>
+                          <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <p style={{ color: 'var(--muted)', marginBottom: '16px', fontSize: '0.9rem' }}>
+                          照片中未检测到 GPS 信息
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setShowLocationPicker(true)}
+                          style={{
+                            padding: '10px 20px',
+                            background: 'var(--accent)',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: 'var(--bg)',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: '500',
+                          }}
+                        >
+                          在地图上选择位置
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="form-actions">
