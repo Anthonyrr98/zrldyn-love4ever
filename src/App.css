@@ -490,7 +490,7 @@ main {
   overflow: hidden;
   box-shadow: var(--shadow-soft);
   cursor: pointer;
-  background: #fff;
+  background: linear-gradient(180deg, #f4f5f7 0%, #e5e7ec 55%, #cfd2da 100%);
   /* 统一卡片尺寸：固定纵横比，保证高度一致 */
   aspect-ratio: 3 / 4;
   transform: translateY(0);
