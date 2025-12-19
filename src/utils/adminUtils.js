@@ -46,6 +46,10 @@ export const mapSupabaseRowToPhoto = (row) => {
  * 从照片对象构建 Supabase payload
  */
 export const buildSupabasePayloadFromPhoto = (photo, statusOverride) => {
+  // 确保相机和镜头信息被正确提取（即使为空字符串也要包含）
+  const camera = photo.camera !== undefined && photo.camera !== null ? String(photo.camera) : '';
+  const lens = photo.lens !== undefined && photo.lens !== null ? String(photo.lens) : '';
+  
   const payload = {
     id: photo.id,
     title: photo.title || '',
@@ -62,8 +66,8 @@ export const buildSupabasePayloadFromPhoto = (photo, statusOverride) => {
     aperture: photo.aperture || '',
     shutter: photo.shutter || '',
     iso: photo.iso || '',
-    camera: photo.camera || '',
-    lens: photo.lens || '',
+    camera: camera, // 明确包含相机信息
+    lens: lens, // 明确包含镜头信息
     rating: photo.rating ?? null,
     shot_date: photo.shotDate || null,
     status: statusOverride || photo.status || 'pending',
@@ -71,6 +75,14 @@ export const buildSupabasePayloadFromPhoto = (photo, statusOverride) => {
     // reject_reason 字段可选，如果数据库中没有该字段，会在更新时移除
     // reject_reason: photo.reject_reason || null,
   };
+  
+  // 调试：确保相机和镜头信息被包含
+  console.log('[buildSupabasePayloadFromPhoto] 构建 payload:', {
+    originalCamera: photo.camera,
+    originalLens: photo.lens,
+    payloadCamera: payload.camera,
+    payloadLens: payload.lens,
+  });
   
   // 只在有 reject_reason 值时才添加到 payload
   if (photo.reject_reason !== undefined && photo.reject_reason !== null) {

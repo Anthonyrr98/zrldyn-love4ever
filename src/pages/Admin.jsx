@@ -1613,8 +1613,16 @@ export function AdminPage() {
 
     if (supabase) {
       try {
+        // 调试：检查 newUpload 对象中的相机和镜头信息
+        console.log('newUpload 对象:', newUpload);
+        console.log('相机信息:', newUpload.camera);
+        console.log('镜头信息:', newUpload.lens);
+        
         const payload = buildSupabasePayloadFromPhoto(newUpload, 'pending');
         console.log('准备上传到 Supabase，payload:', payload);
+        console.log('payload 中的相机信息:', payload.camera);
+        console.log('payload 中的镜头信息:', payload.lens);
+        
         const { data, error } = await supabase.from('photos').upsert(payload);
         if (error) {
           throw handleError(error, {
