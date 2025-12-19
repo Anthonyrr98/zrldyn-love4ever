@@ -562,8 +562,8 @@ main {
 
 @media (max-width: 480px) {
   .like-badge {
-    right: 10px;
-    bottom: 10px;
+    right: 6px;
+    bottom: 8px;
   }
 }
 
