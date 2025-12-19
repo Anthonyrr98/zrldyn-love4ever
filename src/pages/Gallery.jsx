@@ -673,14 +673,15 @@ export function GalleryPage() {
       { id: 'guangdong', title: '广东', latRange: [20.1, 25.5], lngRange: [109.6, 117.3], priority: 2 },
       { id: 'guangxi', title: '广西', latRange: [20.9, 26.4], lngRange: [104.3, 112.0], priority: 2 },
       { id: 'guizhou', title: '贵州', latRange: [24.6, 29.2], lngRange: [103.6, 109.3], priority: 2 },
-      { id: 'shanxi', title: '山西', latRange: [34.5, 40.7], lngRange: [110.2, 114.6], priority: 2 },
       { id: 'shaanxi', title: '陕西', latRange: [31.4, 39.6], lngRange: [105.5, 111.3], priority: 2 },
       { id: 'jilin', title: '吉林', latRange: [40.8, 46.3], lngRange: [121.3, 131.2], priority: 2 },
       
-      // 中等省份（河北优先于辽宁，避免秦皇岛、北戴河被误判为辽宁）
-      // 秦皇岛坐标：39.9354°N, 119.5996°E
-      // 北戴河坐标：约 39.8°N, 119.5°E
+      // 中等省份（河北优先于山西和辽宁，避免石家庄、秦皇岛、北戴河被误判）
+      // 石家庄坐标：38.0428°N, 114.5149°E - 属于河北
+      // 秦皇岛坐标：39.9354°N, 119.5996°E - 属于河北
+      // 北戴河坐标：约 39.8°N, 119.5°E - 属于河北
       { id: 'hebei', title: '河北', latRange: [36.0, 42.6], lngRange: [113.4, 120.0], priority: 2 }, // 扩展经度上限到120.0，确保包含秦皇岛
+      { id: 'shanxi', title: '山西', latRange: [34.5, 40.7], lngRange: [110.2, 114.5], priority: 2 }, // 调整经度上限到114.5，避免与河北重叠（石家庄114.5149）
       { id: 'liaoning', title: '辽宁', latRange: [38.7, 43.4], lngRange: [119.0, 125.5], priority: 3 }, // 调整经度下限到119.0，避免与河北重叠
       { id: 'heilongjiang', title: '黑龙江', latRange: [43.4, 53.6], lngRange: [121.1, 135.1], priority: 3 },
       { id: 'sichuan', title: '四川', latRange: [26.0, 34.3], lngRange: [100.8, 108.5], priority: 3 },
@@ -818,8 +819,9 @@ export function GalleryPage() {
           'jiangxi': 2, 'zhejiang': 2, 'fujian': 2, 'anhui': 2, 'jiangsu': 2,
           'henan': 2, // 河南优先于山东，避免开封、安阳被误判
           'shandong': 2, 'hubei': 2, 'hunan': 2, 'guangdong': 2,
-          'guangxi': 2, 'guizhou': 2, 'shanxi': 2, 'shaanxi': 2,
-          'jilin': 2, 'hebei': 2, 'heilongjiang': 2, 'sichuan': 2, 'yunnan': 2,
+          'guangxi': 2, 'guizhou': 2, 'shaanxi': 2,
+          'jilin': 2, 'hebei': 2, // 河北优先于山西，避免石家庄被误判
+          'shanxi': 2, 'heilongjiang': 2, 'sichuan': 2, 'yunnan': 2,
           // 边界重叠的省份（需要特别注意）
           'qinghai': 3, // 青海优先于甘肃，避免西宁被误判
           'liaoning': 3, // 辽宁优先级低于河北，避免秦皇岛、北戴河被误判
