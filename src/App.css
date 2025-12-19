@@ -266,7 +266,7 @@ main {
   transition: transform 0.25s ease, opacity 0.25s ease, color 0.25s ease;
 }
 
-/* gallery icon: simple camera glyph */
+/* gallery icon: SVG camera icon */
 .icon-camera,
 .icon-compass {
   display: inline-block;
@@ -276,25 +276,10 @@ main {
   position: relative;
 }
 
-.icon-camera::before,
-.icon-camera::after {
-  content: '';
-  position: absolute;
-  border-radius: 4px;
-}
-
-.icon-camera::before {
-  inset: 3px 2px 4px 2px;
-  border: 2px solid currentColor;
-}
-
-.icon-camera::after {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  border: 2px solid currentColor;
-  top: 6px;
-  left: 6px;
+.icon-camera svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 /* explore icon: simple compass glyph */
