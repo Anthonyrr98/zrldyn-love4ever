@@ -2797,6 +2797,31 @@ export function AdminPage() {
                       onChange={handleFormChange}
                     />
                   </div>
+                  {/* 地理位置信息显示在相机参数旁边 */}
+                  {uploadForm.latitude != null && uploadForm.longitude != null && (
+                    <div className="form-group full-width" style={{ 
+                      marginTop: '8px',
+                      padding: '12px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border)'
+                    }}>
+                      <label style={{ fontSize: '0.85rem', color: 'var(--muted)', marginBottom: '6px', display: 'block' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}>
+                          <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        地理位置信息
+                      </label>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--text)', lineHeight: '1.6' }}>
+                        <div>纬度: <span style={{ color: 'var(--accent)' }}>{Number(uploadForm.latitude).toFixed(6)}</span></div>
+                        <div>经度: <span style={{ color: 'var(--accent)' }}>{Number(uploadForm.longitude).toFixed(6)}</span></div>
+                        {uploadForm.altitude != null && (
+                          <div>海拔: <span style={{ color: 'var(--accent)' }}>{Number(uploadForm.altitude).toFixed(2)}m</span></div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="form-group full-width">
                     <label>相机</label>
                     <div style={{ position: 'relative' }}>
