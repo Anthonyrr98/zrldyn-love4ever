@@ -560,6 +560,13 @@ main {
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
 
+@media (max-width: 480px) {
+  .like-badge {
+    right: 16px;
+    bottom: 14px;
+  }
+}
+
 .like-badge:hover {
   background: rgba(0, 0, 0, 0.7);
   border-color: rgba(255, 143, 178, 0.9);
