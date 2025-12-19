@@ -167,9 +167,9 @@ main {
   display: none !important;
 }
 
-/* 如果brand容器内没有内容，也不占据空间 */
-.app-shell.explore-mode .brand:empty {
-  display: none;
+/* 在发现视图下，brand容器不占据空间，确保切换按钮位置与图库页面一致 */
+.app-shell.explore-mode .brand {
+  display: none !important;
 }
 
 @media (max-width: 480px) {
