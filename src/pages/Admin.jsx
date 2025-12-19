@@ -3717,36 +3717,43 @@ export function AdminPage() {
 
                 {/* 分页控件 */}
                 {totalPages > 1 && (
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginTop: '24px',
-                    paddingTop: '20px',
-                    borderTop: '1px solid var(--border)'
-                  }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginTop: '24px',
+                      paddingTop: '24px',
+                      borderTop: '1px solid var(--border)',
+                    }}
+                  >
                     <button
                       type="button"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
                       style={{
-                        padding: '8px 16px',
-                        background: currentPage === 1 ? 'transparent' : 'rgba(255, 255, 255, 0.05)',
+                        padding: '10px 18px',
+                        minWidth: '72px',
+                        background: '#fff',
                         border: '1px solid var(--border)',
-                        borderRadius: '8px',
+                        borderRadius: '999px',
                         color: currentPage === 1 ? 'var(--muted)' : 'var(--text)',
                         cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                        fontSize: '0.9rem'
+                        fontSize: '0.9rem',
+                        boxShadow: '0 6px 16px rgba(15, 23, 42, 0.06)',
+                        opacity: currentPage === 1 ? 0.6 : 1,
                       }}
                     >
                       上一页
                     </button>
-                    <div style={{
-                      display: 'flex',
-                      gap: '4px',
-                      alignItems: 'center'
-                    }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                      }}
+                    >
                       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                         let pageNum;
                         if (totalPages <= 5) {
@@ -3758,6 +3765,7 @@ export function AdminPage() {
                         } else {
                           pageNum = currentPage - 2 + i;
                         }
+                        const isActive = currentPage === pageNum;
                         return (
                           <button
                             key={pageNum}
@@ -3765,14 +3773,15 @@ export function AdminPage() {
                             onClick={() => setCurrentPage(pageNum)}
                             style={{
                               minWidth: '36px',
-                              padding: '8px 12px',
-                              background: currentPage === pageNum ? 'var(--accent)' : 'rgba(255, 255, 255, 0.05)',
-                              border: '1px solid var(--border)',
-                              borderRadius: '8px',
-                              color: currentPage === pageNum ? 'var(--bg)' : 'var(--text)',
+                              padding: '10px 14px',
+                              background: isActive ? 'var(--accent)' : '#fff',
+                              border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+                              borderRadius: '12px',
+                              color: isActive ? 'var(--bg)' : 'var(--text)',
                               cursor: 'pointer',
                               fontSize: '0.9rem',
-                              fontWeight: currentPage === pageNum ? '600' : '400'
+                              fontWeight: isActive ? '600' : '400',
+                              boxShadow: isActive ? '0 8px 18px rgba(180, 132, 78, 0.45)' : '0 4px 10px rgba(15, 23, 42, 0.04)',
                             }}
                           >
                             {pageNum}
@@ -3785,16 +3794,19 @@ export function AdminPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages}
                       style={{
-                        padding: '8px 16px',
-                        background: currentPage === totalPages ? 'transparent' : 'rgba(255, 255, 255, 0.05)',
+                        padding: '10px 18px',
+                        minWidth: '72px',
+                        background: '#fff',
                         border: '1px solid var(--border)',
-                        borderRadius: '8px',
+                        borderRadius: '999px',
                         color: currentPage === totalPages ? 'var(--muted)' : 'var(--text)',
                         cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                        fontSize: '0.9rem'
+                        fontSize: '0.9rem',
+                        boxShadow: '0 6px 16px rgba(15, 23, 42, 0.06)',
+                        opacity: currentPage === totalPages ? 0.6 : 1,
                       }}
                     >
                       下一页
