@@ -398,6 +398,7 @@ main {
     left: var(--tab-indicator-left, 8px);
     width: var(--tab-indicator-width, calc(20% - 8px));
     height: calc(100% - 16px);
+    border-radius: inherit;
   }
 
   .tab-strip::-webkit-scrollbar {
@@ -2595,6 +2596,7 @@ main {
     left: var(--tab-indicator-left, 6px);
     width: var(--tab-indicator-width, calc(20% - 6px));
     height: calc(100% - 12px);
+    border-radius: inherit;
   }
 
   .tab {
