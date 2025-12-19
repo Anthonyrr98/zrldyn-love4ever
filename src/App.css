@@ -2345,10 +2345,11 @@ main {
     padding: 0;
   }
   .lightbox-panel {
-    padding: 0;
-    border-radius: 0;
-    border: none;
-    box-shadow: none;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
     max-width: 100%;
     width: 100%;
     /* 小屏：整个弹层可以上下滚动，便于查看完整参数 */
@@ -2361,13 +2362,19 @@ main {
     -webkit-backdrop-filter: blur(26px) saturate(170%);
   }
   .lightbox-panel::before {
-    border-radius: 0;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
   }
   .lightbox-content-wrapper {
     flex-direction: column;
-    gap: 0;
-    padding: 0;
-    margin: 0;
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
   }
   .lightbox-media {
     /* 手机端显示大图：占据更多上方区域，宽度铺满 */
@@ -2375,22 +2382,29 @@ main {
     max-height: 68vh;
     cursor: pointer;
     position: relative;
-    border-radius: 0;
-    box-shadow: none;
+    border-radius: 0 !important;
+    box-shadow: none !important;
     overflow: visible;
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     width: 100%;
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
   }
   .lightbox-media img {
-    border-radius: 0;
-    width: 100%;
+    border-radius: 0 !important;
+    width: 100% !important;
     height: auto;
     display: block;
-    margin: 0;
-    padding: 0;
-    border: none;
-    outline: none;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    object-fit: cover !important;
+    object-position: center;
   }
   /* 手机端：在照片底部添加一个小的向上箭头提示，表示可以点击查看参数 */
   .lightbox-media::after {
