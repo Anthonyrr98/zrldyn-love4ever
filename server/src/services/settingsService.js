@@ -1,17 +1,23 @@
 import { getDbPool } from '../config/db.js'
 
+/**
+ * 配置项白名单：仅允许以下 key 写入 app_settings 表。
+ * 与后台「配置」表单一一对应，所有表单字段均在此列出并持久化到数据库。
+ */
 const KNOWN_KEYS = [
-  'site_name',
-  'site_subtitle',
-  'logo_letter',
-  'avatar_letter',
-  'amap_key',
-  'amap_security_code',
-  'oss_region',
-  'oss_bucket',
-  'oss_access_key_id',
-  'oss_access_key_secret',
-  'theme_color',
+  'site_name',           // 站点名称
+  'site_subtitle',       // 副标题
+  'logo_letter',         // 站点 Logo 字母（无图时显示）
+  'logo_image_url',      // 站点 Logo 图片 URL
+  'avatar_letter',       // 头像字母（无图时备用）
+  'avatar_image_url',   // 用户头像图片 URL
+  'theme_color',         // 主题色（hex）
+  'amap_key',            // 高德 API Key
+  'amap_security_code',  // 高德安全密钥
+  'oss_region',           // 阿里云 OSS Region
+  'oss_bucket',          // OSS Bucket
+  'oss_access_key_id',   // OSS AccessKeyId
+  'oss_access_key_secret', // OSS AccessKeySecret
 ]
 
 export async function getAllSettings() {

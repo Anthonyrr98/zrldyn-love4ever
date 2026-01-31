@@ -25,6 +25,15 @@
   width: fit-content;
 }
 
+.category-bar--loading {
+  padding: 12px 24px;
+}
+
+.category-loading-text {
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .category-pill {
   position: absolute;
   left: 0;

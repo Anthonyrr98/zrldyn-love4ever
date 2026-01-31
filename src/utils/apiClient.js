@@ -43,6 +43,7 @@ export function saveAuth(token, user) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem('pic4pick_token', token)
   window.localStorage.setItem('pic4pick_user', JSON.stringify(user))
+  window.dispatchEvent(new CustomEvent('pic4pick-auth-change'))
 }
 
 export function loadAuth() {
@@ -64,5 +65,6 @@ export function clearAuth() {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem('pic4pick_token')
   window.localStorage.removeItem('pic4pick_user')
+  window.dispatchEvent(new CustomEvent('pic4pick-auth-change'))
 }
 

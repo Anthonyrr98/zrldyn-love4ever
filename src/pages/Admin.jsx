@@ -1,9 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import exifr from 'exifr'
 import LoginForm from '../components/LoginForm'
 import LocationPickerModal from '../components/LocationPickerModal'
 import { apiRequest, loadAuth, clearAuth, getToken } from '../utils/apiClient'
 import './Admin.css'
+
+// 简单拖拽排序辅助
+function arrayMove(arr, from, to) {
+  const copy = [...arr]
+  const [item] = copy.splice(from, 1)
+  copy.splice(to, 0, item)
+  return copy
+}
 
 /** 从 EXIF 解析结果映射到表单字段 */
 function exifToFormFields(exif) {
@@ -61,7 +69,10 @@ function Admin() {
     site_name: 'Pic4Pick',
     site_subtitle: 'Anthony',
     logo_letter: 'P',
+    logo_image_url: '',
     avatar_letter: 'A',
+    avatar_image_url: '',
+    theme_color: '',
     amap_key: '',
     amap_security_code: '',
     oss_region: '',
@@ -70,6 +81,15 @@ function Admin() {
     oss_access_key_secret: '',
   })
   const [configLoading, setConfigLoading] = useState(false)
+  // 分类管理状态
+  const [categories, setCategories] = useState([])
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [deletedCategories, setDeletedCategories] = useState([])
+  const [deletedCategoriesLog, setDeletedCategoriesLog] = useState([])
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [categoryFormData, setCategoryFormData] = useState({ name: '', filter_type: 'manual', filter_tags: '' })
+  const [categorySaving, setCategorySaving] = useState(false)
+  const [draggedCategoryIndex, setDraggedCategoryIndex] = useState(null)
   const [editingPhoto, setEditingPhoto] = useState(null)
   const [editFormData, setEditFormData] = useState(null)
   const [editDetailLoading, setEditDetailLoading] = useState(false)
@@ -317,10 +337,27 @@ function Admin() {
     }
   }
 
+  // 分类管理
+  const loadCategories = useCallback(async () => {
+    if (!user) return
+    setCategoriesLoading(true)
+    try {
+      const data = await apiRequest('/api/categories')
+      setCategories(data || [])
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('加载分类失败', err)
+      showMessage('error', err.message || '加载分类失败')
+    } finally {
+      setCategoriesLoading(false)
+    }
+  }, [user])
+
   useEffect(() => {
     if (user) {
       loadStats()
       loadConfig()
+      loadCategories()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
@@ -330,6 +367,10 @@ function Admin() {
     if (activeTab === 'reviewed') {
       setPhotoStatusFilter('approved')
       loadPhotos()
+    } else if (activeTab === 'categories') {
+      loadCategories()
+      loadDeletedCategories()
+      loadDeletedCategoriesLog()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, user])
@@ -528,7 +569,10 @@ function Admin() {
         site_name: data.site_name || 'Pic4Pick',
         site_subtitle: data.site_subtitle || 'Anthony',
         logo_letter: (data.logo_letter || 'P').trim().slice(0, 1) || 'P',
+        logo_image_url: data.logo_image_url || '',
         avatar_letter: (data.avatar_letter || 'A').trim().slice(0, 1) || 'A',
+        avatar_image_url: data.avatar_image_url || '',
+        theme_color: data.theme_color || '',
         amap_key: data.amap_key || '',
         amap_security_code: data.amap_security_code || '',
         oss_region: data.oss_region || '',
@@ -547,6 +591,160 @@ function Admin() {
       }
     } finally {
       setConfigLoading(false)
+    }
+  }
+
+  const openCreateCategory = () => {
+    setEditingCategory({ isNew: true })
+    setCategoryFormData({ name: '', filter_type: 'manual', filter_tags: '' })
+  }
+
+  const openEditCategory = (cat) => {
+    setEditingCategory(cat)
+    setCategoryFormData({
+      name: cat.name || '',
+      filter_type: cat.filter_type || 'manual',
+      filter_tags: cat.filter_tags || '',
+    })
+  }
+
+  const closeEditCategory = () => {
+    setEditingCategory(null)
+    setCategoryFormData({ name: '', filter_type: 'manual', filter_tags: '' })
+  }
+
+  const handleCategoryFormChange = (e) => {
+    const { name, value } = e.target
+    setCategoryFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSaveCategory = async (e) => {
+    e.preventDefault()
+    if (!user || !editingCategory) return
+    if (!categoryFormData.name.trim()) {
+      showMessage('error', '分类名称不能为空')
+      return
+    }
+    setCategorySaving(true)
+    try {
+      if (editingCategory.isNew) {
+        await apiRequest('/api/categories', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: categoryFormData.name.trim(),
+            filter_type: categoryFormData.filter_type,
+            filter_tags: categoryFormData.filter_tags.trim() || null,
+          }),
+        })
+        showMessage('success', '分类已创建')
+      } else {
+        await apiRequest(`/api/categories/${editingCategory.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name: categoryFormData.name.trim(),
+            filter_type: categoryFormData.filter_type,
+            filter_tags: categoryFormData.filter_tags.trim() || null,
+          }),
+        })
+        showMessage('success', '分类已更新')
+      }
+      closeEditCategory()
+      loadCategories()
+    } catch (err) {
+      showMessage('error', err.message || '保存失败')
+    } finally {
+      setCategorySaving(false)
+    }
+  }
+
+  const loadDeletedCategories = useCallback(async () => {
+    if (!user) return
+    try {
+      const data = await apiRequest('/api/categories/deleted')
+      setDeletedCategories(data || [])
+    } catch (err) {
+      setDeletedCategories([])
+    }
+  }, [user])
+
+  const loadDeletedCategoriesLog = useCallback(async () => {
+    if (!user) return
+    try {
+      const data = await apiRequest('/api/categories/deleted-history')
+      setDeletedCategoriesLog(data || [])
+    } catch (err) {
+      setDeletedCategoriesLog([])
+    }
+  }, [user])
+
+  const handleRestoreCategory = async (cat) => {
+    if (!user || !cat) return
+    try {
+      await apiRequest(`/api/categories/${cat.id}/restore`, { method: 'POST' })
+      showMessage('success', `「${cat.name}」已复原`)
+      loadCategories()
+      loadDeletedCategories()
+    } catch (err) {
+      showMessage('error', err.message || '复原失败')
+    }
+  }
+
+  const handlePermanentDeleteCategory = async (cat) => {
+    if (!user || !cat) return
+    if (!window.confirm(`确定永久删除「${cat.name}」？此操作不可恢复，分类将从数据库中彻底移除。`)) return
+    try {
+      await apiRequest(`/api/categories/deleted/${cat.id}`, { method: 'DELETE' })
+      showMessage('success', '分类已永久删除')
+      loadDeletedCategories()
+      loadDeletedCategoriesLog()
+    } catch (err) {
+      showMessage('error', err.message || '永久删除失败')
+    }
+  }
+
+  const handleDeleteCategory = async (cat) => {
+    if (!user || !cat) return
+    if (cat.is_system) {
+      showMessage('error', '系统内置分类不可删除')
+      return
+    }
+    if (!window.confirm(`确定删除分类「${cat.name}」？删除后可在下方「已删除的分类」中复原。`)) return
+    try {
+      const result = await apiRequest(`/api/categories/${cat.id}`, { method: 'DELETE' })
+      showMessage('success', result?.message || '分类已删除，可在下方复原')
+      loadCategories()
+      loadDeletedCategories()
+    } catch (err) {
+      showMessage('error', err.message || '删除失败')
+    }
+  }
+
+  // 拖拽排序
+  const handleCategoryDragStart = (index) => {
+    setDraggedCategoryIndex(index)
+  }
+
+  const handleCategoryDragOver = (e, index) => {
+    e.preventDefault()
+    if (draggedCategoryIndex == null || draggedCategoryIndex === index) return
+    setCategories((prev) => arrayMove(prev, draggedCategoryIndex, index))
+    setDraggedCategoryIndex(index)
+  }
+
+  const handleCategoryDragEnd = async () => {
+    if (draggedCategoryIndex == null) return
+    setDraggedCategoryIndex(null)
+    // 保存新顺序
+    const ids = categories.map((c) => c.id)
+    try {
+      await apiRequest('/api/categories/reorder', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      })
+      showMessage('success', '排序已保存')
+    } catch (err) {
+      showMessage('error', err.message || '保存排序失败')
+      loadCategories() // 重新加载恢复
     }
   }
 
@@ -574,7 +772,10 @@ function Admin() {
         site_name: saved.site_name || 'Pic4Pick',
         site_subtitle: saved.site_subtitle || 'Anthony',
         logo_letter: (saved.logo_letter || 'P').trim().slice(0, 1) || 'P',
+        logo_image_url: saved.logo_image_url || '',
         avatar_letter: (saved.avatar_letter || 'A').trim().slice(0, 1) || 'A',
+        avatar_image_url: saved.avatar_image_url || '',
+        theme_color: saved.theme_color || '',
         amap_key: saved.amap_key || '',
         amap_security_code: saved.amap_security_code || '',
         oss_region: saved.oss_region || '',
@@ -583,6 +784,7 @@ function Admin() {
         oss_access_key_secret: saved.oss_access_key_secret || '',
       })
       showMessage('success', '配置已保存')
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('pic4pick-config-updated'))
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err)
@@ -618,7 +820,13 @@ function Admin() {
       <div className="admin-container">
         <div className="admin-header">
           <div className="admin-logo">
-            <div className="admin-logo-avatar">{configData.logo_letter}</div>
+            {configData.logo_image_url ? (
+              <div className="admin-logo-avatar admin-logo-avatar--img">
+                <img src={configData.logo_image_url} alt="" />
+              </div>
+            ) : (
+              <div className="admin-logo-avatar">{configData.logo_letter}</div>
+            )}
             <div>
               <div className="admin-title">{configData.site_name || 'Pic4Pick'}</div>
               <div className="admin-subtitle">{configData.site_subtitle || 'Anthony'}</div>
@@ -651,7 +859,6 @@ function Admin() {
             <div className="stat-content">
               <div className="stat-number">{statsLoading ? '...' : stats.total}</div>
               <div className="stat-label">作品总数</div>
-              <div className="stat-sublabel">全部作品数量</div>
             </div>
           </div>
 
@@ -664,7 +871,6 @@ function Admin() {
             <div className="stat-content">
               <div className="stat-number">{statsLoading ? '...' : stats.approved}</div>
               <div className="stat-label">已上传</div>
-              <div className="stat-sublabel">已上传的作品</div>
             </div>
           </div>
         </div>
@@ -684,6 +890,15 @@ function Admin() {
             onClick={() => setActiveTab('reviewed')}
           >
             已上传 ({stats.approved})
+          </button>
+          <button
+            className={`admin-tab ${activeTab === 'categories' ? 'active' : ''}`}
+            onClick={() => setActiveTab('categories')}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            分类
           </button>
           <button
             className={`admin-tab ${activeTab === 'config' ? 'active' : ''}`}
@@ -847,11 +1062,13 @@ function Admin() {
                     onChange={handleInputChange}
                     required
                   >
-                    <option value="精选">精选</option>
-                    <option value="最新">最新</option>
-                    <option value="随览">随览</option>
-                    <option value="附近">附近</option>
-                    <option value="远方">远方</option>
+                    {categories.length > 0 ? (
+                      categories.map((cat) => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))
+                    ) : (
+                      <option value="精选">精选</option>
+                    )}
                   </select>
                 </div>
 
@@ -1121,6 +1338,211 @@ function Admin() {
           </div>
         )}
 
+        {activeTab === 'categories' && (
+          <div className="admin-content admin-content--categories">
+            <div className="categories-section">
+              <div className="section-title">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                分类管理
+                <button type="button" className="category-add-btn" onClick={openCreateCategory}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  添加分类
+                </button>
+              </div>
+              <p className="category-hint">拖拽分类可调整显示顺序，系统分类（带锁图标）不可删除</p>
+
+              {categoriesLoading ? (
+                <div className="photo-list-loading">
+                  <div className="loading-spinner"></div>
+                  <span>加载中...</span>
+                </div>
+              ) : categories.length === 0 ? (
+                <div className="photo-list-empty">暂无分类</div>
+              ) : (
+                <div className="category-list">
+                  {categories.map((cat, index) => (
+                    <div
+                      key={cat.id}
+                      className={`category-item ${draggedCategoryIndex === index ? 'dragging' : ''}`}
+                      draggable
+                      onDragStart={() => handleCategoryDragStart(index)}
+                      onDragOver={(e) => handleCategoryDragOver(e, index)}
+                      onDragEnd={handleCategoryDragEnd}
+                    >
+                      <div className="category-drag-handle">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                          <circle cx="5" cy="4" r="1.5" fill="currentColor"/>
+                          <circle cx="11" cy="4" r="1.5" fill="currentColor"/>
+                          <circle cx="5" cy="8" r="1.5" fill="currentColor"/>
+                          <circle cx="11" cy="8" r="1.5" fill="currentColor"/>
+                          <circle cx="5" cy="12" r="1.5" fill="currentColor"/>
+                          <circle cx="11" cy="12" r="1.5" fill="currentColor"/>
+                        </svg>
+                      </div>
+                      <div className="category-info">
+                        <span className="category-name">
+                          {cat.name}
+                          {cat.is_system ? (
+                            <svg className="category-system-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" title="系统分类">
+                              <path d="M7 1v2M7 11v2M4.5 3.5L3 2M10.5 3.5L12 2M2 7H4M10 7h2M3 12l1.5-1.5M11 12l-1.5-1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                              <circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.2"/>
+                            </svg>
+                          ) : null}
+                        </span>
+                        <span className="category-filter-type">
+                          {cat.filter_type === 'manual' ? '手动分配' : cat.filter_type === 'tag' ? '按标签筛选' : '两者结合'}
+                          {cat.filter_tags && <span className="category-tags-preview">（{cat.filter_tags}）</span>}
+                        </span>
+                      </div>
+                      <div className="category-actions">
+                        <button type="button" className="category-edit-btn" onClick={() => openEditCategory(cat)} title="编辑">
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M10 2l2 2-8 8H2v-2l8-8z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        {!cat.is_system && (
+                          <button type="button" className="category-delete-btn" onClick={() => handleDeleteCategory(cat)} title="删除">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                              <path d="M3 4h8M5 4V3a1 1 0 011-1h2a1 1 0 011 1v1M11 4v7a1 1 0 01-1 1H4a1 1 0 01-1-1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {deletedCategories.length > 0 && (
+                <div className="categories-deleted-section">
+                  <div className="section-title section-title--deleted">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M4 5h10M6 5V4a1 1 0 011-1h4a1 1 0 011 1v1M7 5v8a1 1 0 001 1h2a1 1 0 001-1V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    已删除的分类（可复原）
+                  </div>
+                  <div className="category-list category-list--deleted">
+                    {deletedCategories.map((cat) => (
+                      <div key={cat.id} className="category-item category-item--deleted">
+                        <div className="category-info">
+                          <span className="category-name">{cat.name}</span>
+                          <span className="category-filter-type">
+                            {cat.filter_type === 'manual' ? '手动分配' : cat.filter_type === 'tag' ? '按标签筛选' : '两者结合'}
+                          </span>
+                        </div>
+                        <div className="category-actions">
+                          <button type="button" className="category-restore-btn" onClick={() => handleRestoreCategory(cat)} title="复原">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                              <path d="M2 7h10M2 7L5 4M2 7l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            复原
+                          </button>
+                          <button type="button" className="category-permanent-delete-btn" onClick={() => handlePermanentDeleteCategory(cat)} title="永久删除（不可恢复）">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                              <path d="M3 4h8M5 4V3a1 1 0 011-1h2a1 1 0 011 1v1M11 4v7a1 1 0 01-1 1H4a1 1 0 01-1-1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            永久删除
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 已永久删除的分类（历史，只读） */}
+              <div className="categories-deleted-section categories-log-section">
+                <div className="section-title section-title--deleted">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M3 3h12v12H3V3zM5 5v8M9 5v8M13 5v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  已永久删除的分类（历史）
+                </div>
+                {deletedCategoriesLog.length === 0 ? (
+                  <p className="category-hint">暂无记录，永久删除的分类会出现在这里。</p>
+                ) : (
+                  <div className="category-list category-list--deleted">
+                    {deletedCategoriesLog.map((log) => (
+                      <div key={log.id} className="category-item category-item--log">
+                        <div className="category-info">
+                          <span className="category-name">{log.name}</span>
+                          <span className="category-filter-type">
+                            {log.filter_type === 'manual' ? '手动分配' : log.filter_type === 'tag' ? '按标签筛选' : '两者结合'}
+                            {log.permanent_deleted_at && (
+                              <span className="category-log-time">
+                                · 永久删除于 {new Date(log.permanent_deleted_at).toLocaleString('zh-CN')}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 编辑/新建分类弹窗 */}
+            {editingCategory && (
+              <div className="photo-edit-modal-overlay" onClick={closeEditCategory} role="presentation">
+                <div className="photo-edit-modal category-edit-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="photo-edit-modal-header">
+                    <h3>{editingCategory.isNew ? '新建分类' : '编辑分类'}</h3>
+                    <button type="button" className="photo-edit-modal-close" onClick={closeEditCategory} aria-label="关闭">×</button>
+                  </div>
+                  <form className="photo-edit-form" onSubmit={handleSaveCategory}>
+                    <div className="photo-edit-fields">
+                      <div className="form-group">
+                        <label>分类名称 <span className="required">*</span></label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={categoryFormData.name}
+                          onChange={handleCategoryFormChange}
+                          placeholder="例如：风景、人像、美食"
+                          required
+                          disabled={editingCategory.is_system && !editingCategory.isNew}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>筛选方式</label>
+                        <select name="filter_type" value={categoryFormData.filter_type} onChange={handleCategoryFormChange}>
+                          <option value="manual">手动分配（上传时选择分类）</option>
+                          <option value="tag">按标签筛选（自动匹配标签）</option>
+                          <option value="both">两者结合</option>
+                        </select>
+                      </div>
+                      {(categoryFormData.filter_type === 'tag' || categoryFormData.filter_type === 'both') && (
+                        <div className="form-group form-group-full">
+                          <label>筛选标签</label>
+                          <input
+                            type="text"
+                            name="filter_tags"
+                            value={categoryFormData.filter_tags}
+                            onChange={handleCategoryFormChange}
+                            placeholder="用逗号分隔，例如：风景,自然,山水"
+                          />
+                          <span className="form-hint">照片含有这些标签时会自动归入此分类</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="photo-edit-modal-actions">
+                      <button type="submit" className="submit-btn" disabled={categorySaving}>
+                        {categorySaving ? '保存中...' : '保存'}
+                      </button>
+                      <button type="button" className="reset-btn" onClick={closeEditCategory}>取消</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'config' && (
           <div className="admin-content admin-content--config">
             <form className="config-form" onSubmit={handleConfigSave}>
@@ -1135,13 +1557,134 @@ function Admin() {
                     <label>副标题</label>
                     <input type="text" name="site_subtitle" value={configData.site_subtitle} onChange={handleConfigChange} placeholder="Anthony" />
                   </div>
-                  <div className="form-group">
-                    <label>Logo 字母</label>
-                    <input type="text" name="logo_letter" value={configData.logo_letter} onChange={handleConfigChange} placeholder="P" maxLength={1} title="头部左侧圆形内显示" />
+                </div>
+              </section>
+
+              <section className="config-card">
+                <h3 className="config-card-title">品牌与头像（可自定义）</h3>
+                <p className="config-card-hint">站点 Logo 用于头部左侧与管理页左上角；用户头像用于头部右侧圆形。可上传图片或填写 URL，上传后自动保存到数据库。</p>
+                <div className="config-media-grid">
+                  <div className="config-media-item">
+                    <div className="config-media-label">站点 LOGO 图片</div>
+                    <div className="config-media-row">
+                      <div className="config-media-preview" aria-hidden>
+                        {configData.logo_image_url ? (
+                          <img src={configData.logo_image_url} alt="" />
+                        ) : (
+                          <div className="config-media-placeholder">无图片</div>
+                        )}
+                      </div>
+                      <div className="config-media-actions">
+                        <label className="config-media-upload-btn">
+                          上传图片
+                          <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const ext = (file.name.match(/\.([a-zA-Z0-9]+)$/)?.[1] || '').toLowerCase()
+                            if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+                              showMessage('error', '仅支持 JPG、PNG、WEBP')
+                              return
+                            }
+                            try {
+                              const formData = new FormData()
+                              formData.append('file', file)
+                              const token = getToken()
+                              const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+                              const res = await fetch(`${apiBase}/api/photos/upload-oss`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: formData })
+                              const data = await res.json().catch(() => ({}))
+                              if (!res.ok) throw new Error(data.message || '上传失败')
+                              const logoUrl = data.ossUrl || data.url || ''
+                              setConfigData((p) => ({ ...p, logo_image_url: logoUrl }))
+                              await apiRequest('/api/config', { method: 'POST', body: JSON.stringify({ logo_image_url: logoUrl }) })
+                              if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('pic4pick-config-updated'))
+                              showMessage('success', '站点 Logo 已上传并保存到数据库')
+                            } catch (err) {
+                              showMessage('error', err.message || '上传失败')
+                            }
+                            e.target.value = ''
+                          }} />
+                        </label>
+                        {configData.logo_image_url ? (
+                          <button
+                            type="button"
+                            className="config-media-clear-btn"
+                            onClick={async () => {
+                              setConfigData((p) => ({ ...p, logo_image_url: '' }))
+                              try {
+                                await apiRequest('/api/config', { method: 'POST', body: JSON.stringify({ logo_image_url: '' }) })
+                                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('pic4pick-config-updated'))
+                                showMessage('success', '站点 Logo 已清除并保存到数据库')
+                              } catch (err) {
+                                showMessage('error', err.message || '清除失败')
+                              }
+                            }}
+                          >
+                            清除
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>头像字母</label>
-                    <input type="text" name="avatar_letter" value={configData.avatar_letter} onChange={handleConfigChange} placeholder="A" maxLength={1} title="头部右侧圆形内显示" />
+                  <div className="config-media-item">
+                    <div className="config-media-label">用户头像图片</div>
+                    <div className="config-media-row">
+                      <div className="config-media-preview" aria-hidden>
+                        {configData.avatar_image_url ? (
+                          <img src={configData.avatar_image_url} alt="" />
+                        ) : (
+                          <div className="config-media-placeholder">无图片</div>
+                        )}
+                      </div>
+                      <div className="config-media-actions">
+                        <label className="config-media-upload-btn">
+                          上传图片
+                          <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const ext = (file.name.match(/\.([a-zA-Z0-9]+)$/)?.[1] || '').toLowerCase()
+                            if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+                              showMessage('error', '仅支持 JPG、PNG、WEBP')
+                              return
+                            }
+                            try {
+                              const formData = new FormData()
+                              formData.append('file', file)
+                              const token = getToken()
+                              const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+                              const res = await fetch(`${apiBase}/api/photos/upload-oss`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: formData })
+                              const data = await res.json().catch(() => ({}))
+                              if (!res.ok) throw new Error(data.message || '上传失败')
+                              const avatarUrl = data.ossUrl || data.url || ''
+                              setConfigData((p) => ({ ...p, avatar_image_url: avatarUrl }))
+                              await apiRequest('/api/config', { method: 'POST', body: JSON.stringify({ avatar_image_url: avatarUrl }) })
+                              if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('pic4pick-config-updated'))
+                              showMessage('success', '用户头像已上传并保存到数据库')
+                            } catch (err) {
+                              showMessage('error', err.message || '上传失败')
+                            }
+                            e.target.value = ''
+                          }} />
+                        </label>
+                        {configData.avatar_image_url ? (
+                          <button
+                            type="button"
+                            className="config-media-clear-btn"
+                            onClick={async () => {
+                              setConfigData((p) => ({ ...p, avatar_image_url: '' }))
+                              try {
+                                await apiRequest('/api/config', { method: 'POST', body: JSON.stringify({ avatar_image_url: '' }) })
+                                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('pic4pick-config-updated'))
+                                showMessage('success', '用户头像已清除并保存到数据库')
+                              } catch (err) {
+                                showMessage('error', err.message || '清除失败')
+                              }
+                            }}
+                          >
+                            清除
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -1301,12 +1844,14 @@ function Admin() {
                   </div>
                   <div className="form-group">
                     <label>分类</label>
-                    <select name="category" value={editFormData.category || '精选'} onChange={handleEditInputChange}>
-                      <option value="精选">精选</option>
-                      <option value="最新">最新</option>
-                      <option value="随览">随览</option>
-                      <option value="附近">附近</option>
-                      <option value="远方">远方</option>
+                    <select name="category" value={editFormData.category || categories[0]?.name || '精选'} onChange={handleEditInputChange}>
+                      {categories.length > 0 ? (
+                        categories.map((cat) => (
+                          <option key={cat.id} value={cat.name}>{cat.name}</option>
+                        ))
+                      ) : (
+                        <option value="精选">精选</option>
+                      )}
                     </select>
                   </div>
                   <div className="form-group form-group-full">

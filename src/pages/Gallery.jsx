@@ -4,8 +4,9 @@ import PhotoCard from '../components/PhotoCard'
 import { apiRequest } from '../utils/apiClient'
 import './Gallery.css'
 
-const categories = ['最新', '精选', '随览', '附近', '远方']
 const PHOTOS_PER_PAGE = 12
+// 系统分类名称（用于特殊逻辑判断）
+const SYSTEM_CATEGORIES = { NEARBY: '附近', FAR: '远方' }
 
 /** 将 API 返回的照片转为 PhotoCard 所需格式 */
 function normalizePhoto(item) {
@@ -24,16 +25,52 @@ function normalizePhoto(item) {
 function Gallery() {
   const [searchParams, setSearchParams] = useSearchParams()
   const categoryFromUrl = searchParams.get('category')
-  const [activeCategory, setActiveCategory] = useState(() =>
-    categories.includes(categoryFromUrl || '') ? categoryFromUrl : '最新'
-  )
+  
+  // 分类列表（从 API 动态加载）
+  const [categories, setCategories] = useState([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const categoryNames = categories.map((c) => c.name)
+  
+  const [activeCategory, setActiveCategory] = useState(() => categoryFromUrl || '最新')
+
+  // 加载分类
+  useEffect(() => {
+    let cancelled = false
+    setCategoriesLoading(true)
+    apiRequest('/api/categories')
+      .then((data) => {
+        if (cancelled) return
+        const cats = Array.isArray(data) ? data : []
+        setCategories(cats)
+        // 如果当前选中的分类不存在，切换到第一个分类
+        const names = cats.map((c) => c.name)
+        if (names.length > 0) {
+          const urlCat = searchParams.get('category')
+          if (urlCat && names.includes(urlCat)) {
+            setActiveCategory(urlCat)
+          } else if (!names.includes(activeCategory)) {
+            setActiveCategory(names[0])
+          }
+        }
+      })
+      .catch(() => {
+        // 加载失败时使用默认分类
+        setCategories([{ id: 0, name: '最新', is_system: 1 }])
+      })
+      .finally(() => {
+        if (!cancelled) setCategoriesLoading(false)
+      })
+    return () => { cancelled = true }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 浏览器前进/后退或从详情返回时，按 URL 恢复分类
   useEffect(() => {
+    if (categoriesLoading || categoryNames.length === 0) return
     const cat = searchParams.get('category')
-    const next = cat && categories.includes(cat) ? cat : '最新'
+    const next = cat && categoryNames.includes(cat) ? cat : categoryNames[0] || '最新'
     setActiveCategory((prev) => (prev !== next ? next : prev))
-  }, [searchParams])
+  }, [searchParams, categoriesLoading, categoryNames])
+
   const [displayedPhotos, setDisplayedPhotos] = useState([])
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -48,9 +85,12 @@ function Gallery() {
   const [userPosition, setUserPosition] = useState(null)
   const [locationError, setLocationError] = useState(null)
 
+  // 是否是需要定位的系统分类
+  const needsLocation = activeCategory === SYSTEM_CATEGORIES.NEARBY || activeCategory === SYSTEM_CATEGORIES.FAR
+
   // 附近/远方：获取当前位置
   useEffect(() => {
-    if (activeCategory !== '附近' && activeCategory !== '远方') {
+    if (!needsLocation) {
       setLocationError(null)
       return
     }
@@ -70,7 +110,7 @@ function Gallery() {
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     )
-  }, [activeCategory])
+  }, [needsLocation])
 
   // 加载照片（从后端 API）
   const loadPhotos = useCallback(
@@ -86,7 +126,7 @@ function Gallery() {
           pageSize: String(PHOTOS_PER_PAGE),
         })
         if (activeCategory) params.set('category', activeCategory)
-        if ((activeCategory === '附近' || activeCategory === '远方') && userPosition) {
+        if (needsLocation && userPosition) {
           params.set('lat', String(userPosition.lat))
           params.set('lng', String(userPosition.lng))
         }
@@ -105,13 +145,14 @@ function Gallery() {
         loadingRef.current = false
       }
     },
-    [activeCategory, userPosition]
+    [activeCategory, userPosition, needsLocation]
   )
 
   // 初始加载与切换分类时重置并加载；附近/远方在拿到位置后再加载
   useEffect(() => {
-    const needLocation = activeCategory === '附近' || activeCategory === '远方'
-    if (needLocation && !userPosition && !locationError) {
+    // 等待分类加载完成
+    if (categoriesLoading) return
+    if (needsLocation && !userPosition && !locationError) {
       return
     }
     setDisplayedPhotos([])
@@ -119,9 +160,9 @@ function Gallery() {
     setHasMore(true)
     loadingRef.current = false
     loadPhotos(1)
-  }, [activeCategory, loadPhotos, userPosition, locationError])
+  }, [activeCategory, loadPhotos, userPosition, locationError, categoriesLoading, needsLocation])
 
-  const activeIndex = categories.indexOf(activeCategory)
+  const activeIndex = categoryNames.indexOf(activeCategory)
 
   // 滑动指示器位置：根据当前激活项测量
   const updatePill = useCallback(() => {
@@ -180,41 +221,50 @@ function Gallery() {
     }
   }, [hasMore, currentPage, loadPhotos])
 
+  // 获取默认分类名称（用于 URL 参数判断）
+  const defaultCategoryName = categoryNames[0] || '最新'
+
   return (
     <div className="gallery-page">
       <div className="gallery-container">
-        <div ref={categoryBarRef} className="category-bar">
-          <span
-            className="category-pill"
-            style={{
-              transform: `translateX(${pillStyle.left}px)`,
-              width: pillStyle.width,
-            }}
-            aria-hidden
-          />
-          {categories.map((category, i) => (
-            <button
-              ref={(el) => (buttonRefs.current[i] = el)}
-              key={category}
-              className={`category-btn ${activeCategory === category ? 'active' : ''}`}
-              onClick={() => {
-                setActiveCategory(category)
-                setSearchParams(category === '最新' ? {} : { category })
+        {categoriesLoading ? (
+          <div className="category-bar category-bar--loading">
+            <span className="category-loading-text">加载分类中...</span>
+          </div>
+        ) : (
+          <div ref={categoryBarRef} className="category-bar">
+            <span
+              className="category-pill"
+              style={{
+                transform: `translateX(${pillStyle.left}px)`,
+                width: pillStyle.width,
               }}
-            >
-              <span className="category-btn-text">{category}</span>
-            </button>
-          ))}
-        </div>
+              aria-hidden
+            />
+            {categoryNames.map((categoryName, i) => (
+              <button
+                ref={(el) => (buttonRefs.current[i] = el)}
+                key={categoryName}
+                className={`category-btn ${activeCategory === categoryName ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveCategory(categoryName)
+                  setSearchParams(categoryName === defaultCategoryName ? {} : { category: categoryName })
+                }}
+              >
+                <span className="category-btn-text">{categoryName}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {loadError && (
           <div className="gallery-error">{loadError}</div>
         )}
 
-        {(activeCategory === '附近' || activeCategory === '远方') && !userPosition && !locationError && (
+        {needsLocation && !userPosition && !locationError && (
           <div className="gallery-hint">正在获取位置…</div>
         )}
-        {(activeCategory === '附近' || activeCategory === '远方') && locationError && (
+        {needsLocation && locationError && (
           <div className="gallery-hint gallery-hint--warn">{locationError}</div>
         )}
 

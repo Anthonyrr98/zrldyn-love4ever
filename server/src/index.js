@@ -7,6 +7,7 @@ import errorHandler from './middleware/errorHandler.js'
 import authRoutes from './routes/auth.js'
 import photosRoutes from './routes/photos.js'
 import configRoutes from './routes/config.js'
+import categoriesRoutes from './routes/categories.js'
 import { getLocationHierarchy } from './services/photoService.js'
 
 const app = express()
@@ -59,6 +60,9 @@ app.get('/api/health/db', async (req, res) => {
 
 // Auth
 app.use('/api/auth', authRoutes)
+
+// Categories
+app.use('/api/categories', categoriesRoutes)
 
 // Photos：先注册 /locations，避免被 /:id 误匹配为 id=locations
 app.get('/api/photos/locations', async (req, res, next) => {
