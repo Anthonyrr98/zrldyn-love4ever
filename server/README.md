@@ -1,242 +1,205 @@
-# Pic4Pick 后端服务器
+# Pic4Pick 后端服务
 
-这是一个用于 Pic4Pick 项目的后端服务器，提供图片上传、存储和管理功能。
-
-## 功能特性
-
-- ✅ 图片上传（支持 JPG、PNG、GIF、WebP）
-- ✅ 文件大小限制（默认 10MB）
-- ✅ 图片优化和压缩（使用 Sharp）
-- ✅ 静态文件服务
-- ✅ 图片删除
-- ✅ 图片列表查询
-- ✅ CORS 支持
-- ✅ 错误处理
+Node.js + Express + MySQL 后端 API 服务。
 
 ## 快速开始
 
-### 1. 安装依赖
+### 方式一：一键部署脚本（推荐）
+
+**Linux/Unix 服务器：**
 
 ```bash
 cd server
+chmod +x deploy.sh
+./deploy.sh
+```
+
+**宝塔面板优化版：**
+
+```bash
+cd server
+chmod +x deploy-baota.sh
+./deploy-baota.sh
+```
+
+**Windows 服务器：**
+
+```cmd
+cd server
+deploy.bat
+```
+
+脚本会自动完成所有配置步骤。
+
+### 方式二：手动安装
+
+#### 1. 安装依赖
+
+```bash
 npm install
 ```
 
-### 2. 启动服务器
+#### 2. 配置数据库
+
+创建数据库并导入表结构：
 
 ```bash
-# 开发模式（自动重启）
+mysql -u root -p pic4pick < sql/schema.sql
+```
+
+#### 3. 配置环境变量
+
+复制 `.env.example` 为 `.env` 并修改：
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+填入数据库连接信息：
+
+```ini
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=你的数据库用户名
+DB_PASSWORD=你的数据库密码
+DB_NAME=pic4pick
+
+JWT_SECRET=一个足够长的随机字符串
+```
+
+#### 4. 初始化管理员账号
+
+```bash
+npm run init-admin
+```
+
+或使用环境变量自定义：
+
+```bash
+ADMIN_USER=myadmin ADMIN_PASS=mypassword node init-admin.js
+```
+
+#### 5. 启动服务
+
+开发环境：
+```bash
 npm run dev
-
-# 生产模式
-npm start
 ```
 
-服务器将在 `http://localhost:3001` 启动。
-
-## API 接口
-
-### 1. 健康检查
-
-```
-GET /api/health
-```
-
-### 2. 上传图片
-
-```
-POST /api/upload
-Content-Type: multipart/form-data
-
-参数:
-- file: 图片文件（必需）
-- filename: 自定义文件名（可选）
-- optimize: 是否优化图片，'true' 或 'false'（可选）
-```
-
-响应示例：
-```json
-{
-  "success": true,
-  "url": "http://localhost:3001/uploads/pic4pick/1234567890-abc.jpg",
-  "filename": "1234567890-abc.jpg",
-  "originalName": "photo.jpg",
-  "size": 1024000,
-  "message": "上传成功"
-}
-```
-
-### 3. 删除图片
-
-```
-DELETE /api/upload/:filename
-```
-
-### 4. 获取图片列表
-
-```
-GET /api/images
-```
-
-## 部署指南
-
-**📖 详细的部署指南请查看：[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)**
-
-该指南包含：
-- 如何获取后端服务器地址
-- Railway、Render、Fly.io 等平台的部署步骤
-- VPS 服务器部署方法
-- 环境变量配置说明
-
----
-
-## 部署选项
-
-### 选项 1: 本地文件系统（当前实现）
-
-图片存储在服务器的 `uploads/pic4pick/` 目录中。
-
-**优点：**
-- 简单易用
-- 无需额外配置
-
-**缺点：**
-- 需要服务器有足够的存储空间
-- 备份和扩展性较差
-
-### 选项 2: 云存储服务
-
-可以修改代码以支持云存储：
-
-#### AWS S3
-```javascript
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-});
-```
-
-#### 阿里云 OSS
-```javascript
-import OSS from 'ali-oss';
-
-const client = new OSS({
-  region: process.env.ALIYUN_OSS_REGION,
-  accessKeyId: process.env.ALIYUN_OSS_ACCESS_KEY_ID,
-  accessKeySecret: process.env.ALIYUN_OSS_ACCESS_KEY_SECRET,
-  bucket: process.env.ALIYUN_OSS_BUCKET,
-});
-```
-
-#### 腾讯云 COS
-```javascript
-import COS from 'cos-nodejs-sdk-v5';
-
-const cos = new COS({
-  SecretId: process.env.TENCENT_SECRET_ID,
-  SecretKey: process.env.TENCENT_SECRET_KEY,
-});
-```
-
-### 选项 3: 数据库存储
-
-可以将图片元数据存储在数据库中：
-
-- **PostgreSQL** + **PostGIS**（支持地理位置查询）
-- **MongoDB**（灵活的文档存储）
-- **MySQL**（传统关系型数据库）
-
-## 前端配置
-
-在前端管理面板中：
-
-1. 选择"存储设置"
-2. 选择"后端 API"
-3. 配置 API 地址：`http://localhost:3001/api/upload`
-
-## 生产环境部署
-
-### 使用 PM2
-
+生产环境（使用 PM2）：
 ```bash
-npm install -g pm2
-pm2 start server.js --name pic4pick-server
+pm2 start src/index.js --name pic4pick-api
 pm2 save
-pm2 startup
+pm2 startup  # 设置开机自启
 ```
 
-### 使用 Docker
+## API 端点
 
-创建 `Dockerfile`：
+### 认证
+- `POST /api/auth/login` - 管理员登录
+  - 请求体：`{ username, password }`
+  - 返回：`{ token, user: { id, username, role } }`
 
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install --production
-COPY . .
-EXPOSE 3001
-CMD ["node", "server.js"]
-```
+### 照片管理（需要登录）
+- `GET /api/photos` - 获取照片列表
+  - 查询参数：`status`, `category`, `keyword`, `page`, `pageSize`
+  - 返回：`{ items: [], total, page, pageSize }`
 
-构建和运行：
+- `POST /api/photos` - 创建照片（需管理员）
+  - 请求体：照片信息（title, location_city, oss_key 等）
+  - 返回：创建的照片对象
+
+- `POST /api/photos/:id/approve` - 审核通过（需管理员）
+- `POST /api/photos/:id/reject` - 审核拒绝（需管理员）
+  - 请求体：`{ reason?: string }`
+
+- `GET /api/photos/stats` - 获取统计数据
+  - 返回：`{ total, pending, approved, rejected }`
+
+### 健康检查
+- `GET /api/health` - 检查服务状态和数据库连接
+
+## 数据库结构
+
+主要表：
+
+- `users` - 用户表（管理员账号）
+- `photos` - 照片表（作品信息、审核状态等）
+
+详细结构见 `sql/schema.sql`
+
+## 环境变量
+
+| 变量名 | 说明 | 必填 |
+|--------|------|------|
+| `PORT` | 服务端口 | 否（默认3000） |
+| `DB_HOST` | 数据库主机 | 是 |
+| `DB_PORT` | 数据库端口 | 否（默认3306） |
+| `DB_USER` | 数据库用户名 | 是 |
+| `DB_PASSWORD` | 数据库密码 | 是 |
+| `DB_NAME` | 数据库名 | 是 |
+| `JWT_SECRET` | JWT 密钥 | 是 |
+| `OSS_*` | 阿里云 OSS 配置 | 否（可选） |
+
+## 部署
+
+详细部署说明见 [DEPLOY_INSTRUCTIONS.md](./DEPLOY_INSTRUCTIONS.md)
+
+### 宝塔面板部署
+
+1. 上传项目到服务器
+2. 运行 `./deploy-baota.sh`
+3. 在宝塔「网站」中配置 Nginx 反向代理到 `http://127.0.0.1:3000`
+4. 配置 HTTPS 证书
+
+## 常用命令
 
 ```bash
-docker build -t pic4pick-server .
-docker run -p 3001:3001 -v $(pwd)/uploads:/app/uploads pic4pick-server
+# 查看服务状态
+pm2 list
+
+# 查看日志
+pm2 logs pic4pick-api
+
+# 重启服务
+pm2 restart pic4pick-api
+
+# 停止服务
+pm2 stop pic4pick-api
+
+# 查看实时日志
+pm2 logs pic4pick-api --lines 50
 ```
 
-### 使用 Nginx 反向代理
+## 故障排查
 
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
+### 数据库连接失败
 
-    # 前端静态文件
-    location / {
-        root /var/www/pic4pick/dist;
-        try_files $uri $uri/ /index.html;
-    }
+1. 检查 MySQL 是否运行：`systemctl status mysql`
+2. 检查 `.env` 配置是否正确
+3. 测试连接：`mysql -h$DB_HOST -u$DB_USER -p$DB_PASSWORD`
 
-    # 后端 API
-    location /api {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
+### 服务无法启动
 
-    # 上传的文件
-    location /uploads {
-        proxy_pass http://localhost:3001;
-    }
-}
+查看详细错误：
+```bash
+pm2 logs pic4pick-api --err
 ```
+
+或直接运行：
+```bash
+npm run dev
+```
+
+### 端口被占用
+
+修改 `.env` 中的 `PORT`，然后重启服务。
 
 ## 安全建议
 
-1. **添加身份验证**：使用 JWT 或 Session
-2. **文件类型验证**：只允许图片文件
-3. **文件大小限制**：防止大文件攻击
-4. **速率限制**：防止恶意上传
-5. **HTTPS**：生产环境使用 HTTPS
-6. **CORS 配置**：限制允许的域名
-
-## 扩展功能
-
-- [ ] 图片裁剪和缩放
-- [ ] 水印添加
-- [ ] 图片格式转换
-- [ ] CDN 集成
-- [ ] 图片元数据提取（EXIF）
-- [ ] 批量上传
-- [ ] 图片搜索和标签
-
+1. **修改默认密码**：部署后立即修改管理员密码
+2. **使用强 JWT_SECRET**：至少 32 位随机字符串
+3. **配置防火墙**：只开放必要端口
+4. **定期备份**：备份数据库和重要文件
+5. **更新依赖**：`npm audit` 检查安全漏洞

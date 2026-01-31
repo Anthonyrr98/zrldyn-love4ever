@@ -1,0 +1,152 @@
+.login-card {
+  margin-bottom: 24px;
+  padding: 32px 28px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  max-width: 400px;
+}
+
+.login-header {
+  margin-bottom: 24px;
+}
+
+.login-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.login-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* 仅对直接子 input（如用户名）加边框，密码在 .login-password-wrap 内只保留一个外框 */
+.login-field > input {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-soft);
+  background: #fff;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.login-field > input::placeholder {
+  color: var(--muted-2);
+}
+
+.login-field > input:focus {
+  border-color: var(--theme-color);
+  box-shadow: 0 0 0 3px var(--theme-color-25);
+}
+
+.login-password-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-soft);
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.login-password-wrap:focus-within {
+  border-color: var(--theme-color);
+  box-shadow: 0 0 0 3px var(--theme-color-25);
+}
+
+.login-password-input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 16px 12px 16px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+}
+
+.login-password-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.login-password-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted-2);
+  cursor: pointer;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transition: color 0.2s, background 0.2s;
+}
+
+.login-password-toggle:hover {
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.login-error {
+  font-size: 13px;
+  font-weight: 500;
+  color: #b91c1c;
+}
+
+.login-submit {
+  margin-top: 4px;
+  padding: 12px 0;
+  width: 100%;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--text);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.2s, transform 0.2s var(--ease-out), box-shadow 0.2s;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: var(--text-secondary);
+  transform: translateY(var(--lift-y));
+  box-shadow: var(--shadow-md);
+}
+
+.login-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

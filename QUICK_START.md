@@ -1,174 +1,137 @@
-# Pic4Pick 优化版 - 快速启动指南
+# Pic4Pick 快速启动指南
 
-## 🚀 启动服务器（3步完成）
+## 前置要求
+
+- Node.js 18+ 
+- MySQL 5.7+ 或 MariaDB 10.3+
+- npm 或 yarn
+
+## 一键启动（开发环境）
+
+### 1. 安装所有依赖
 
 ```bash
-# 1. 进入服务器目录
-cd server
-
-# 2. 安装依赖（仅首次需要）
+# 前端依赖
 npm install
 
-# 3. 启动服务器
+# 后端依赖
+cd server
+npm install
+cd ..
+```
+
+### 2. 配置数据库
+
+#### 快速方式（使用默认配置）
+
+1. 确保 MySQL 正在运行
+2. 创建数据库：
+   ```sql
+   CREATE DATABASE pic4pick CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+3. 导入表结构：
+   ```bash
+   mysql -u root -p pic4pick < server/sql/schema.sql
+   ```
+
+#### 使用宝塔面板
+
+1. 在宝塔「数据库」中创建数据库 `pic4pick`
+2. 在「phpMyAdmin」中导入 `server/sql/schema.sql`
+
+### 3. 配置后端环境变量
+
+编辑 `server/.env`，修改数据库连接信息：
+
+```ini
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root          # 你的 MySQL 用户名
+DB_PASSWORD=          # 你的 MySQL 密码（如果没有密码留空）
+DB_NAME=pic4pick
+
+JWT_SECRET=pic4pick_dev_secret_change_in_production_2026
+```
+
+### 4. 初始化管理员账号
+
+```bash
+cd server
+npm run init-admin
+```
+
+默认账号：
+- 用户名：`admin`
+- 密码：`admin123`
+
+⚠️ **生产环境请务必修改密码！**
+
+### 5. 启动服务
+
+**终端 1 - 启动后端：**
+```bash
+cd server
 npm run dev
-# 或使用增强版启动脚本：
-# ./start-enhanced.sh
 ```
 
-服务器将在 http://localhost:3001 启动
+后端运行在：http://localhost:3000
 
-## 🔑 默认登录信息
-
-- **用户名**: `admin`
-- **密码**: `admin123`
-
-⚠️ **生产环境请修改密码**！
-
-## 📝 主要功能
-
-### 1. 用户认证
-```javascript
-// 登录
-POST /api/auth/login
-{
-  "username": "admin",
-  "password": "admin123"
-}
-
-// 返回 token，前端保存到 localStorage
-localStorage.setItem('auth_token', response.token);
-```
-
-### 2. WebDAV 上传（通过代理，无 CORS 问题）
-```javascript
-// 测试连接
-POST /api/webdav/test
-{
-  "url": "https://your-webdav.com/dav",
-  "username": "your-username",
-  "password": "your-password"
-}
-
-// 上传文件（需要 Bearer Token）
-POST /api/webdav/upload
-Headers: Authorization: Bearer {token}
-FormData: file, webdavUrl, username, password, remotePath
-```
-
-### 3. 本地上传
-```javascript
-POST /api/upload
-FormData: file, filename, optimize
-```
-
-### 4. 阿里云 OSS 上传
-```javascript
-POST /api/upload/oss
-FormData: file, filename, optimize
-```
-
-## 🔧 环境配置
-
-编辑 `server/.env` 文件：
-
+**终端 2 - 启动前端：**
 ```bash
-PORT=3001
-JWT_SECRET=your-super-secret-jwt-key-2024-change-in-production
-NODE_ENV=development
-
-# 可选：阿里云 OSS
-ALIYUN_OSS_REGION=oss-cn-hangzhou
-ALIYUN_OSS_BUCKET=your-bucket
-ALIYUN_OSS_ACCESS_KEY_ID=your-key-id
-ALIYUN_OSS_ACCESS_KEY_SECRET=your-secret
+npm run dev
 ```
 
-## 📁 项目结构
+前端运行在：http://localhost:5173
 
-```
-Pic4Pick/
-├── server/
-│   ├── server-enhanced.js    # 增强版服务器（推荐）
-│   ├── server.js             # 原始服务器
-│   ├── package.json          # 依赖
-│   ├── .env                  # 环境变量
-│   ├── start-enhanced.sh     # 启动脚本
-│   └── logs/                 # 日志目录
-│
-├── src/
-│   └── utils/
-│       ├── webdav.js         # 原始 WebDAV（直接访问）
-│       └── webdav-proxy.js   # 代理 WebDAV（推荐）
-│
-└── OPTIMIZATION_REPORT.md    # 详细优化报告
-```
+### 6. 访问应用
 
-## 🎯 推荐使用方案
+- **前端首页**：http://localhost:5173/
+- **管理后台**：http://localhost:5173/admin
+  - 用户名：`admin`
+  - 密码：`admin123`
 
-### 方案 1：WebDAV 云存储（推荐）
-- 使用坚果云、OwnCloud 等 WebDAV 服务
-- 通过后端代理访问，无 CORS 问题
-- 步骤：
-  1. 先登录获取 token
-  2. 配置 WebDAV 信息
-  3. 使用 proxy 工具上传
+## 功能测试
 
-### 方案 2：阿里云 OSS
-- 存储在阿里云 OSS
-- 图床专用，高可用
-- 步骤：
-  1. 配置 OSS 密钥
-  2. 使用 /api/upload/oss 上传
+1. **健康检查**：访问 http://localhost:3000/api/health
+   - 应返回：`{"status":"ok","db":"ok"}`
 
-### 方案 3：本地存储
-- 图片存在服务器本地
-- 适合个人使用
-- 步骤：
-  1. 使用 /api/upload 上传
-  2. 文件存在 server/uploads/
+2. **登录测试**：
+   - 访问 http://localhost:5173/admin
+   - 输入用户名 `admin` 和密码 `admin123`
+   - 登录成功后可以看到管理界面
 
-## 🆚 优化前后对比
+3. **上传照片**：
+   - 在「上传作品」标签页填写表单
+   - 图片地址可以临时填写一个图片 URL（如：`https://images.unsplash.com/photo-xxx`）
+   - 提交后照片会出现在「待审核」列表
 
-| 功能 | 优化前 | 优化后 |
-|------|--------|--------|
-| WebDAV | ❌ CORS 跨域错误 | ✅ 代理访问 |
-| 认证 | ❌ 无认证 | ✅ JWT 认证 |
-| 密钥管理 | ❌ 硬编码 | ✅ 环境变量 |
-| 日志 | ❌ 无 | ✅ Winston |
-| 文件验证 | ⚠️ 基础 | ✅ 增强 |
-| 性能 | 普通 | ✅ 代码分割 |
+4. **审核照片**：
+   - 在「待审核」列表中点击「通过」或「拒绝」
+   - 通过的照片会出现在「已审核」列表
 
-## 📚 更多文档
+## 常见问题
 
-- [OPTIMIZATION_REPORT.md](OPTIMIZATION_REPORT.md) - 详细优化报告
-- [DEPLOYMENT.md](DEPLOYMENT.md) - 部署指南
-- [ALIYUN_OSS_SETUP.md](ALIYUN_OSS_SETUP.md) - 阿里云 OSS 配置
+### 后端启动失败
 
-## 🐛 常见问题
+1. 检查 MySQL 是否运行：`mysql -u root -p`
+2. 检查 `.env` 中的数据库配置是否正确
+3. 检查数据库 `pic4pick` 是否已创建
+4. 检查表结构是否已导入（运行 `sql/schema.sql`）
 
-### Q: 登录失败？
-A: 检查用户名密码是否为 `admin`/`admin123`，并且服务器正在运行。
+### 前端无法连接后端
 
-### Q: WebDAV 连接失败？
-A: 确保 WebDAV 服务器地址正确，格式如 `https://domain.com/dav/`（坚果云要带 `/dav`）
+1. 确保后端服务已启动（http://localhost:3000）
+2. 检查浏览器控制台是否有 CORS 错误
+3. 确认 `vite.config.js` 中的代理配置正确
 
-### Q: 上传图片失败？
-A: 检查文件大小（最大 15MB）和格式（JPG/PNG/GIF/WebP/HEIC）
+### 登录失败
 
-### Q: 如何修改登录凭据？
-A: 编辑 `server/server-enhanced.js` 中的登录验证逻辑，或集成数据库。
+1. 确认已运行 `npm run init-admin` 初始化管理员账号
+2. 检查数据库 `users` 表中是否有 `admin` 用户
+3. 检查后端日志查看错误信息
 
-## 🎉 开始使用
+## 下一步
 
-```bash
-# 启动服务器
-cd server && npm run dev
-
-# 在浏览器打开
-http://localhost:5173  # 前端 Vite 开发服务器
-http://localhost:3001  # 后端 API 服务器
-```
-
----
-
-**享受优化后的 Pic4Pick！** 🚀
+- 配置阿里云 OSS（在 `server/.env` 中填写 OSS 配置）
+- 配置高德地图 Key（在根目录 `.env` 中填写 `VITE_AMAP_KEY`）
+- 部署到生产环境（参考 `server/DEPLOYMENT.md`）

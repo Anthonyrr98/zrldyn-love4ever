@@ -1,0 +1,415 @@
+.photo-detail-page {
+  padding: 28px 24px 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: calc(100vh - 72px);
+}
+
+.photo-detail-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.photo-detail-error {
+  padding: 32px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+  text-align: center;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  margin-bottom: 24px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-family: inherit;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s var(--ease-out);
+}
+
+.back-button:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+  transform: translateY(var(--lift-y));
+}
+
+.photo-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.photo-image-section {
+  position: relative;
+  background: var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.detail-photo-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  vertical-align: middle;
+}
+
+.photo-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.info-card {
+  background: var(--bg-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s var(--ease-out);
+}
+
+.info-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* 手风琴：可折叠卡片 */
+.info-card--accordion .info-card-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: inherit;
+  border-radius: var(--radius-md);
+  transition: background 0.2s;
+}
+
+.info-card--accordion .info-card-header:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.info-card--accordion .info-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.info-card--accordion .info-card-title svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.info-card--accordion .info-card-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.25s var(--ease-out);
+}
+
+.info-card--accordion.is-expanded .info-card-chevron {
+  transform: rotate(90deg);
+}
+
+.info-card--accordion .info-card-body {
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.info-card--accordion .info-card-body[hidden] {
+  display: none;
+}
+
+.info-card--accordion .info-card-body .info-grid,
+.info-card--accordion .info-card-body .location-info {
+  padding-top: 16px;
+}
+
+/* 非手风琴卡片保留原标题样式 */
+.info-card:not(.info-card--accordion) .info-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 18px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.info-card:not(.info-card--accordion) {
+  padding: 22px 24px 26px;
+}
+
+.info-card-title svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 28px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.info-value {
+  font-size: 14px;
+  color: var(--text);
+  text-align: left;
+  font-weight: 500;
+  line-height: 1.4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* 作品信息卡片：标题、标签、评级占满整行 */
+.photo-info-section > .info-card:first-child .info-item:nth-child(1),
+.photo-info-section > .info-card:first-child .info-item:nth-child(6),
+.photo-info-section > .info-card:first-child .info-item:nth-child(7) {
+  grid-column: 1 / -1;
+}
+
+.tag-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.rating-value {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--theme-color);
+}
+
+.rating-max {
+  font-size: 13px;
+  color: var(--muted-2);
+  font-weight: 500;
+}
+
+.info-card--location .location-info {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.info-card--location .location-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 28px;
+}
+
+.info-card--location .location-info-grid .info-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.info-card--location .location-info-grid .info-value {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.4;
+  font-family: inherit;
+}
+
+.map-button {
+  padding: 10px 20px;
+  background: var(--text);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s var(--ease-out);
+  width: fit-content;
+  box-shadow: var(--shadow-sm);
+}
+
+.map-button:hover {
+  background: var(--text-secondary);
+  transform: translateY(var(--lift-y));
+}
+
+/* 地图小窗口 */
+.photo-detail-map-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: photo-detail-map-fadeIn 0.2s ease-out;
+}
+
+@keyframes photo-detail-map-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.photo-detail-map-dialog {
+  background: var(--bg);
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 4px 6px -2px rgba(0, 0, 0, 0.08),
+    0 18px 40px -12px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  width: 420px;
+  max-width: calc(100vw - 48px);
+  display: flex;
+  flex-direction: column;
+  animation: photo-detail-map-slideIn 0.25s var(--ease-out);
+}
+
+@keyframes photo-detail-map-slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.photo-detail-map-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  background: var(--bg-soft);
+}
+
+.photo-detail-map-dialog-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.photo-detail-map-dialog-close {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.photo-detail-map-dialog-close:hover {
+  background: var(--border-subtle);
+  color: var(--text);
+}
+
+.photo-detail-map-dialog-body {
+  height: 280px;
+  min-height: 200px;
+  padding: 10px;
+  background: var(--bg);
+}
+
+.photo-detail-map-dialog-body .amap-container,
+.photo-detail-map-dialog-body .amap-inner {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.photo-detail-map-amap {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+@media (max-width: 520px) {
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 14px 0;
+  }
+
+  .photo-info-section > .info-card:first-child .info-item:nth-child(1),
+  .photo-info-section > .info-card:first-child .info-item:nth-child(6),
+  .photo-info-section > .info-card:first-child .info-item:nth-child(7) {
+    grid-column: 1;
+  }
+
+  .info-card--location .location-info-grid {
+    grid-template-columns: 1fr;
+    gap: 14px 0;
+  }
+}

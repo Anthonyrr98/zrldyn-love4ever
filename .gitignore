@@ -1,6 +1,3 @@
-# Ignore Windows reserved filename accidentally created
-nul
-
 # Logs
 logs
 *.log
@@ -14,9 +11,15 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Environment and secrets（勿提交到 GitHub）
 .env
 .env.local
 .env.*.local
+server/.env
+
+# Editor / IDE
+.cursor/
 
 # Editor directories and files
 .vscode/*

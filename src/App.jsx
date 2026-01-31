@@ -1,20 +1,24 @@
-import { HashRouter, Route, Routes } from 'react-router-dom';
-import './App.css';
-import { AdminPage } from './pages/Admin.jsx';
-import { GalleryPage } from './pages/Gallery.jsx';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { Routes, Route } from 'react-router-dom'
+import Header from './components/Header'
+import Gallery from './pages/Gallery'
+import Discover from './pages/Discover'
+import Admin from './pages/Admin'
+import PhotoDetail from './pages/PhotoDetail'
+import './App.css'
 
 function App() {
   return (
-    <ErrorBoundary>
-    <HashRouter>
+    <div className="app">
+      <Header />
       <Routes>
-        <Route path="/" element={<GalleryPage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/" element={<Gallery />} />
+        <Route path="/gallery" element={<Gallery />} />
+        <Route path="/discover" element={<Discover />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/photo/:id" element={<PhotoDetail />} />
       </Routes>
-    </HashRouter>
-    </ErrorBoundary>
-  );
+    </div>
+  )
 }
 
-export default App;
+export default App

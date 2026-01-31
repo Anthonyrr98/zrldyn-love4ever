@@ -1,7 +1,0 @@
-node_modules/
-uploads/
-public/
-.env
-*.log
-.DS_Store
-

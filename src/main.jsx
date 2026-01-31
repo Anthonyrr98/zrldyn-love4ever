@@ -1,14 +1,17 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import './index.css';
-import App from './App.jsx';
-import { applyFaviconFromStoredLogo } from './utils/branding';
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
+import App from './App'
+import { loadThemeColor } from './utils/theme'
+import './index.css'
 
-// 应用启动时，从本地 / Supabase 同步下来的品牌 Logo 初始化 favicon
-applyFaviconFromStoredLogo();
+// 应用启动时加载主题色
+loadThemeColor()
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>,
 )
