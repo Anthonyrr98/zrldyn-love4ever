@@ -852,8 +852,8 @@ function Admin() {
         <div className="stats-section">
           <div className="stat-card">
             <div className="stat-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor"/>
+              <svg width="24" height="24" viewBox="0 0 1024 1024" fill="none">
+                <path d="M192 736h640V128H256a64.768 64.768 0 0 0-64 64v544zM256 64h608c9.344 0 17.024 3.008 23.04 8.96 5.952 6.016 8.96 13.696 8.96 23.04V768a31.168 31.168 0 0 1-8.96 23.04 31.168 31.168 0 0 1-23.04 8.96h-704l-32 57.984V192c0.64-36.032 13.184-66.176 37.504-90.496 24.32-24.32 54.528-36.8 90.496-37.504z m-16 736a49.088 49.088 0 0 0-33.536 14.464 45.44 45.44 0 0 0-13.44 33.536c0 13.312 4.48 24.512 13.44 33.536 9.024 8.96 20.224 13.824 33.536 14.464H832v-96H240z m0-64H896V896a64.832 64.832 0 0 1-64 64H240c-32-0.64-58.496-11.52-79.488-32.512-20.992-20.992-31.808-47.488-32.512-79.488 0.64-32 11.52-58.496 32.512-79.488 20.992-20.992 47.488-31.808 79.488-32.512zM384 128v251.008l96-76.992L576 379.008V128H384zM320 64h320v380.992a31.232 31.232 0 0 1-18.496 28.544 30.144 30.144 0 0 1-33.536-3.52L480 384 371.968 470.016a30.144 30.144 0 0 1-33.472 3.456A31.232 31.232 0 0 1 320 445.056V64z" fill="currentColor"/>
               </svg>
             </div>
             <div className="stat-content">
@@ -949,10 +949,6 @@ function Admin() {
                   </>
                 ) : (
                   <>
-                    <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
-                      <path d="M24 8v32M8 24h32" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-                      <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4"/>
-                    </svg>
                     <span className="upload-text">点击或拖拽上传照片</span>
                     <span className="upload-hint">支持JPG、PNG格式, 推荐不超过20MB</span>
                   </>
@@ -971,9 +967,9 @@ function Admin() {
 
             <form className="form-section" onSubmit={handleSubmit}>
               <div className="section-title">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <path d="M4 4h12v12H4V4z" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                  <path d="M6 6h8M6 9h8M6 12h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <svg width="20" height="20" viewBox="0 0 1080 1024" fill="none">
+                  <path d="M310.840889 577.422222a28.444444 28.444444 0 0 1 28.444444-28.444444h398.222223a28.444444 28.444444 0 1 1 0 56.888889h-398.222223a28.444444 28.444444 0 0 1-28.444444-28.444445zM310.840889 732.444444a28.444444 28.444444 0 0 1 28.444444-28.444444h398.222223a28.444444 28.444444 0 1 1 0 56.888889h-398.222223a28.444444 28.444444 0 0 1-28.444444-28.444445zM369.777778 308.622222v85.333334H455.111111v-85.333334H369.777778z m-28.444445-56.888889h142.222223a28.444444 28.444444 0 0 1 28.444444 28.444445v142.222222a28.444444 28.444444 0 0 1-28.444444 28.444444H341.333333a28.444444 28.444444 0 0 1-28.444444-28.444444v-142.222222a28.444444 28.444444 0 0 1 28.444444-28.444445zM579.356444 280.177778a28.444444 28.444444 0 0 1 28.444445-28.444445h115.484444a28.444444 28.444444 0 0 1 0 56.888889h-115.484444a28.444444 28.444444 0 0 1-28.444445-28.444444zM579.356444 422.4a28.444444 28.444444 0 0 1 28.444445-28.444444h115.484444a28.444444 28.444444 0 0 1 0 56.888888h-115.484444a28.444444 28.444444 0 0 1-28.444445-28.444444z" fill="currentColor"/>
+                  <path d="M840.988444 184.888889v654.222222H235.804444V184.888889h605.184z m-605.184-56.888889a56.888889 56.888889 0 0 0-56.888888 56.888889v654.222222a56.888889 56.888889 0 0 0 56.888888 56.888889h605.184a56.888889 56.888889 0 0 0 56.888889-56.888889V184.888889a56.888889 56.888889 0 0 0-56.888889-56.888889H235.804444z" fill="currentColor"/>
                 </svg>
                 作品信息
               </div>
@@ -1129,8 +1125,10 @@ function Admin() {
               </div>
 
               <div className="section-title">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <path d="M10 2L12 7h5l-4 3 1.5 5L10 13l-4.5 4 1.5-5-4-3h5z" fill="currentColor"/>
+                <svg width="20" height="20" viewBox="0 0 1024 1024" fill="none">
+                  <path d="M70.4 134.4h684.8v300.8h70.4V153.6c0-51.2-38.4-89.6-89.6-89.6h-640C38.4 64 0 102.4 0 153.6v780.8c0 51.2 38.4 89.6 89.6 89.6h249.6v-70.4H70.4V134.4z" fill="currentColor"/>
+                  <path d="M979.2 569.6h-89.6l-6.4-25.6c-6.4-25.6-32-44.8-57.6-44.8H614.4c-25.6 0-51.2 19.2-57.6 44.8l-12.8 25.6H454.4c-25.6 0-44.8 19.2-44.8 44.8v364.8c0 25.6 19.2 44.8 44.8 44.8h524.8c25.6 0 44.8-19.2 44.8-44.8V614.4c0-25.6-19.2-44.8-44.8-44.8z m-25.6 384H480v-320h89.6l12.8-38.4c6.4-19.2 25.6-32 44.8-32h179.2c19.2 0 38.4 12.8 44.8 32l12.8 38.4h89.6v320z" fill="currentColor"/>
+                  <path d="M716.8 659.2c-70.4 0-128 57.6-128 128s57.6 128 128 128 128-57.6 128-128-57.6-128-128-128z m0 185.6c-32 0-57.6-25.6-57.6-57.6s25.6-57.6 57.6-57.6 57.6 25.6 57.6 57.6-25.6 57.6-57.6 57.6zM128 320h448v64H128zM128 448h320v64H128zM128 576h192v64H128zM128 704h192v64H128z" fill="currentColor"/>
                 </svg>
                 相机参数
               </div>
@@ -1250,7 +1248,7 @@ function Admin() {
                     >
                       <div className="photo-list-image">
                         {(photo.thumbnail_url || photo.preview_url || photo.oss_url) ? (
-                          <img src={photo.thumbnail_url || photo.preview_url || photo.oss_url} alt={photo.title} />
+                          <img src={photo.thumbnail_url || photo.preview_url || photo.oss_url} alt={photo.title} loading="lazy" />
                         ) : (
                           <div className="photo-list-placeholder">无图片</div>
                         )}
@@ -1267,9 +1265,6 @@ function Admin() {
                         <div className="photo-list-tags">
                           {photo.tags && (
                             <span className="photo-tag-badge">{photo.tags}</span>
-                          )}
-                          {photo.rating && (
-                            <span className="photo-rating-badge">⭐ {photo.rating}</span>
                           )}
                         </div>
                       </div>
@@ -1307,7 +1302,7 @@ function Admin() {
                     >
                       <div className="photo-list-image">
                         {(photo.thumbnail_url || photo.preview_url || photo.oss_url) ? (
-                          <img src={photo.thumbnail_url || photo.preview_url || photo.oss_url} alt={photo.title} />
+                          <img src={photo.thumbnail_url || photo.preview_url || photo.oss_url} alt={photo.title} loading="lazy" />
                         ) : (
                           <div className="photo-list-placeholder">无图片</div>
                         )}
@@ -1324,9 +1319,6 @@ function Admin() {
                         <div className="photo-list-tags">
                           {photo.tags && (
                             <span className="photo-tag-badge">{photo.tags}</span>
-                          )}
-                          {photo.rating && (
-                            <span className="photo-rating-badge">⭐ {photo.rating}</span>
                           )}
                         </div>
                       </div>
@@ -1785,7 +1777,7 @@ function Admin() {
               <form className="photo-edit-form" onSubmit={handleEditSave}>
                 <div className="photo-edit-preview">
                   {(editingPhoto.thumbnail_url || editingPhoto.preview_url || editingPhoto.oss_url) ? (
-                    <img src={editingPhoto.thumbnail_url || editingPhoto.preview_url || editingPhoto.oss_url} alt={editingPhoto.title} />
+                    <img src={editingPhoto.thumbnail_url || editingPhoto.preview_url || editingPhoto.oss_url} alt={editingPhoto.title} loading="lazy" />
                   ) : (
                     <div className="photo-list-placeholder">无图片</div>
                   )}

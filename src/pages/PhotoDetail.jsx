@@ -1,5 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import Lightbox from 'yet-another-react-lightbox'
+import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 import { getDetailPreviewUrl } from '../utils/imageUrl'
 import { apiRequest } from '../utils/apiClient'
 import AMapContainer from '../components/AMapContainer'
@@ -36,6 +38,7 @@ function PhotoDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showMapDialog, setShowMapDialog] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [expandedSections, setExpandedSections] = useState({ work: true, camera: false, location: false })
 
   useEffect(() => {
@@ -102,9 +105,22 @@ function PhotoDetail() {
         </button>
 
         <div className="photo-detail-content">
-          <div className="photo-image-section">
+          <div
+            className="photo-image-section photo-image-section--clickable"
+            onClick={() => setLightboxOpen(true)}
+            onKeyDown={(e) => e.key === 'Enter' && setLightboxOpen(true)}
+            role="button"
+            tabIndex={0}
+            title="点击放大查看"
+          >
             <img src={previewUrl} alt={photo.title} className="detail-photo-image" />
           </div>
+          <Lightbox
+            open={lightboxOpen}
+            close={() => setLightboxOpen(false)}
+            slides={[{ src: previewUrl, alt: photo.title }]}
+            plugins={[Zoom]}
+          />
 
           <div className="photo-info-section">
             <div className={`info-card info-card--accordion ${expandedSections.work ? 'is-expanded' : ''}`}>
@@ -116,9 +132,9 @@ function PhotoDetail() {
                 aria-controls="info-card-work"
               >
                 <span className="info-card-title">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M4 4h12v12H4V4z" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                    <path d="M6 6h8M6 9h8M6 12h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <svg width="20" height="20" viewBox="0 0 1080 1024" fill="none">
+                    <path d="M310.840889 577.422222a28.444444 28.444444 0 0 1 28.444444-28.444444h398.222223a28.444444 28.444444 0 1 1 0 56.888889h-398.222223a28.444444 28.444444 0 0 1-28.444444-28.444445zM310.840889 732.444444a28.444444 28.444444 0 0 1 28.444444-28.444444h398.222223a28.444444 28.444444 0 1 1 0 56.888889h-398.222223a28.444444 28.444444 0 0 1-28.444444-28.444445zM369.777778 308.622222v85.333334H455.111111v-85.333334H369.777778z m-28.444445-56.888889h142.222223a28.444444 28.444444 0 0 1 28.444444 28.444445v142.222222a28.444444 28.444444 0 0 1-28.444444 28.444444H341.333333a28.444444 28.444444 0 0 1-28.444444-28.444444v-142.222222a28.444444 28.444444 0 0 1 28.444444-28.444445zM579.356444 280.177778a28.444444 28.444444 0 0 1 28.444445-28.444445h115.484444a28.444444 28.444444 0 0 1 0 56.888889h-115.484444a28.444444 28.444444 0 0 1-28.444445-28.444444zM579.356444 422.4a28.444444 28.444444 0 0 1 28.444445-28.444444h115.484444a28.444444 28.444444 0 0 1 0 56.888888h-115.484444a28.444444 28.444444 0 0 1-28.444445-28.444444z" fill="currentColor"/>
+                    <path d="M840.988444 184.888889v654.222222H235.804444V184.888889h605.184z m-605.184-56.888889a56.888889 56.888889 0 0 0-56.888888 56.888889v654.222222a56.888889 56.888889 0 0 0 56.888888 56.888889h605.184a56.888889 56.888889 0 0 0 56.888889-56.888889V184.888889a56.888889 56.888889 0 0 0-56.888889-56.888889H235.804444z" fill="currentColor"/>
                   </svg>
                   作品信息
                 </span>
@@ -178,8 +194,10 @@ function PhotoDetail() {
                 aria-controls="info-card-camera"
               >
                 <span className="info-card-title">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M10 2L12 7h5l-4 3 1.5 5L10 13l-4.5 4 1.5-5-4-3h5z" fill="currentColor"/>
+                  <svg width="20" height="20" viewBox="0 0 1024 1024" fill="none">
+                    <path d="M70.4 134.4h684.8v300.8h70.4V153.6c0-51.2-38.4-89.6-89.6-89.6h-640C38.4 64 0 102.4 0 153.6v780.8c0 51.2 38.4 89.6 89.6 89.6h249.6v-70.4H70.4V134.4z" fill="currentColor"/>
+                    <path d="M979.2 569.6h-89.6l-6.4-25.6c-6.4-25.6-32-44.8-57.6-44.8H614.4c-25.6 0-51.2 19.2-57.6 44.8l-12.8 25.6H454.4c-25.6 0-44.8 19.2-44.8 44.8v364.8c0 25.6 19.2 44.8 44.8 44.8h524.8c25.6 0 44.8-19.2 44.8-44.8V614.4c0-25.6-19.2-44.8-44.8-44.8z m-25.6 384H480v-320h89.6l12.8-38.4c6.4-19.2 25.6-32 44.8-32h179.2c19.2 0 38.4 12.8 44.8 32l12.8 38.4h89.6v320z" fill="currentColor"/>
+                    <path d="M716.8 659.2c-70.4 0-128 57.6-128 128s57.6 128 128 128 128-57.6 128-128-57.6-128-128-128z m0 185.6c-32 0-57.6-25.6-57.6-57.6s25.6-57.6 57.6-57.6 57.6 25.6 57.6 57.6-25.6 57.6-57.6 57.6zM128 320h448v64H128zM128 448h320v64H128zM128 576h192v64H128zM128 704h192v64H128z" fill="currentColor"/>
                   </svg>
                   相机参数
                 </span>

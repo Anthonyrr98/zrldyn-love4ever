@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import AMapContainer from '../components/AMapContainer'
 import { apiRequest } from '../utils/apiClient'
 import './Discover.css'
@@ -233,7 +233,7 @@ function Discover() {
                         onKeyDown={(e) => e.key === 'Enter' && handleLocationClick(location)}
                       >
                         {location.thumbnail ? (
-                          <img src={`${location.thumbnail}${location.thumbnail.includes('?') ? '&' : '?'}t=${locationsVersion}`} alt={location.name} className="location-thumbnail" />
+                          <img src={`${location.thumbnail}${location.thumbnail.includes('?') ? '&' : '?'}t=${locationsVersion}`} alt={location.name} className="location-thumbnail" loading="lazy" />
                         ) : (
                           <div className="location-thumbnail-placeholder" aria-hidden />
                         )}
@@ -254,7 +254,7 @@ function Discover() {
                             onKeyDown={(e) => e.key === 'Enter' && handleChildClick(child)}
                           >
                             {child.thumbnail ? (
-                              <img src={`${child.thumbnail}${child.thumbnail.includes('?') ? '&' : '?'}t=${locationsVersion}`} alt={child.name} className="location-thumbnail" />
+                              <img src={`${child.thumbnail}${child.thumbnail.includes('?') ? '&' : '?'}t=${locationsVersion}`} alt={child.name} className="location-thumbnail" loading="lazy" />
                             ) : (
                               <div className="location-thumbnail-placeholder" aria-hidden />
                             )}
@@ -293,16 +293,21 @@ function Discover() {
               </div>
               <div className="discover-photo-popup-list">
                 {selectedLocationPhotos.map((photo) => (
-                  <a key={photo.id} href={`/#/photo/${photo.id}`} className="discover-photo-popup-item">
+                  <Link
+                    key={photo.id}
+                    to={`/photo/${photo.id}`}
+                    className="discover-photo-popup-item"
+                    onClick={() => setSelectedLocationPhotos(null)}
+                  >
                     <div className="discover-photo-popup-thumb">
                       {(photo.thumbnail_url || photo.preview_url || photo.oss_url) ? (
-                        <img src={photo.thumbnail_url || photo.preview_url || photo.oss_url} alt={photo.title} />
+                        <img src={photo.thumbnail_url || photo.preview_url || photo.oss_url} alt={photo.title} loading="lazy" />
                       ) : (
                         <div className="discover-photo-popup-placeholder">无图</div>
                       )}
                     </div>
                     <span className="discover-photo-popup-title">{photo.title}</span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>

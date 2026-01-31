@@ -16,8 +16,10 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08);
   --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.10);
+  /* 圆角：sm=标签/小控件, radius/md=卡片/面板, lg=大卡片/图片, xl=弹窗, full=胶囊按钮 */
   --radius-sm: 10px;
   --radius: 14px;
+  --radius-md: 14px;
   --radius-lg: 20px;
   --radius-xl: 24px;
   --radius-full: 9999px;

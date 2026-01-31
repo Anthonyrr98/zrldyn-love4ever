@@ -15,7 +15,7 @@ function PhotoCard({ photo }) {
   return (
     <div className="photo-card" onClick={handleClick}>
       <div className="photo-image-container">
-        <img src={thumbUrl} alt={photo.title} className="photo-image" />
+        <img src={thumbUrl} alt={photo.title} className="photo-image" loading="lazy" />
         {Array.isArray(photo.tags) && photo.tags.length > 0 ? (
           <div className="photo-tag">{photo.tags.filter(Boolean).join(', ')}</div>
         ) : null}

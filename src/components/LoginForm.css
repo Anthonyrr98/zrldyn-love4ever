@@ -146,6 +146,10 @@
   box-shadow: var(--shadow-md);
 }
 
+.login-submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
 .login-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;

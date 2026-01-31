@@ -220,6 +220,10 @@
   border-color: var(--border-medium);
 }
 
+.admin-tab:active {
+  transform: scale(0.98);
+}
+
 .admin-tab.active {
   background: var(--text);
   color: #fff;
@@ -515,6 +519,10 @@
   box-shadow: var(--shadow-md);
 }
 
+.submit-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
 .submit-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -530,6 +538,10 @@
   background: rgba(0, 0, 0, 0.04);
   color: var(--text);
   transform: translateY(var(--lift-y));
+}
+
+.reset-btn:active {
+  transform: scale(0.98);
 }
 
 .photo-list-loading,
@@ -639,14 +651,6 @@
   color: var(--text-secondary);
 }
 
-.photo-rating-badge {
-  padding: 4px 10px;
-  background: var(--theme-color-25);
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--theme-color);
-}
 
 .photo-reject-reason {
   font-size: 12px;
@@ -682,6 +686,10 @@
   transform: translateY(var(--lift-y));
 }
 
+.approve-btn:active {
+  transform: scale(0.98);
+}
+
 .reject-btn {
   background: rgba(239, 68, 68, 0.12);
   color: #dc2626;
@@ -690,6 +698,10 @@
 .reject-btn:hover {
   background: rgba(239, 68, 68, 0.2);
   transform: translateY(var(--lift-y));
+}
+
+.reject-btn:active {
+  transform: scale(0.98);
 }
 
 .admin-message {
@@ -931,6 +943,10 @@
   transform: translateY(var(--lift-y));
 }
 
+.config-media-upload-btn:active {
+  transform: scale(0.98);
+}
+
 .config-media-upload-btn input {
   position: absolute;
   width: 0;
@@ -955,6 +971,10 @@
 .config-media-clear-btn:hover {
   background: rgba(185, 28, 28, 0.12);
   border-color: rgba(185, 28, 28, 0.45);
+}
+
+.config-media-clear-btn:active {
+  transform: scale(0.98);
 }
 
 @media (max-width: 900px) {
@@ -1042,6 +1062,16 @@
 
   .admin-container {
     gap: 20px;
+  }
+
+  .admin-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .admin-tabs .admin-tab {
+    flex-shrink: 0;
   }
 
   .form-grid {
@@ -1259,6 +1289,10 @@
   color: var(--text);
 }
 
+.photo-edit-btn-hide:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
 .photo-edit-btn-hide:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -1280,6 +1314,10 @@
 .photo-edit-btn-delete:hover:not(:disabled) {
   background: #b91c1c;
   color: #fff;
+}
+
+.photo-edit-btn-delete:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .photo-edit-btn-delete:disabled {
@@ -1333,6 +1371,10 @@
 .category-add-btn:hover {
   background: var(--text-secondary);
   transform: translateY(var(--lift-y));
+}
+
+.category-add-btn:active {
+  transform: scale(0.98);
 }
 
 .category-hint {

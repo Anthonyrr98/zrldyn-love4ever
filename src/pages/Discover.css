@@ -119,12 +119,16 @@
   background: var(--bg-base);
   border: 1px solid var(--border-subtle);
   cursor: pointer;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
 }
 
 .location-card-large:hover {
   box-shadow: var(--shadow-sm);
   border-color: var(--border-soft);
+}
+
+.location-card-large:active {
+  transform: scale(0.99);
 }
 
 .location-card-large .location-thumbnail {
@@ -146,12 +150,16 @@
   background: var(--bg-base);
   border: 1px solid var(--border-subtle);
   cursor: pointer;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
 }
 
 .location-card-small:hover {
   box-shadow: var(--shadow-sm);
   border-color: var(--border-soft);
+}
+
+.location-card-small:active {
+  transform: scale(0.99);
 }
 
 .location-card-small .location-thumbnail {
@@ -327,6 +335,10 @@
 .discover-photo-popup-close:hover {
   color: var(--text);
   background: var(--bg-soft);
+}
+
+.discover-photo-popup-close:active {
+  transform: scale(0.95);
 }
 
 .discover-photo-popup-list {

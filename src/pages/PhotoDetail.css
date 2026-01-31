@@ -42,10 +42,14 @@
 }
 
 .back-button:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(0, 0, 0, 0.06);
   color: var(--text);
   box-shadow: var(--shadow-md);
   transform: translateY(var(--lift-y));
+}
+
+.back-button:active {
+  transform: translateY(0) scale(0.97);
 }
 
 .photo-detail-content {
@@ -63,6 +67,10 @@
   overflow: hidden;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-subtle);
+}
+
+.photo-image-section--clickable {
+  cursor: zoom-in;
 }
 
 .detail-photo-image {
