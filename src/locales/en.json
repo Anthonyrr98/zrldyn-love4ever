@@ -1,0 +1,81 @@
+{
+  "header": {
+    "gallery": "Gallery",
+    "discover": "Discover",
+    "admin": "Admin"
+  },
+  "gallery": {
+    "searchPlaceholder": "Search title, tags, location...",
+    "loadCategories": "Loading categories...",
+    "loading": "Loading...",
+    "empty": "No photos yet. Upload in admin.",
+    "noMore": "No more photos",
+    "getLocation": "Getting location…",
+    "locationError": "Location unavailable, sorting by time",
+    "geoNotSupported": "Geolocation not supported"
+  },
+  "photoDetail": {
+    "back": "Back",
+    "loading": "Loading...",
+    "notFound": "Photo not found",
+    "invalidId": "Invalid photo ID",
+    "workInfo": "Work Info",
+    "cameraParams": "Camera",
+    "location": "Location",
+    "clickZoom": "Click to zoom",
+    "notSet": "Not set"
+  },
+  "discover": {
+    "byLocation": "By Location",
+    "loadLocations": "Loading locations…",
+    "loadError": "Failed to load locations",
+    "empty": "No uploaded locations",
+    "photosAtLocation": "Photos at this location ({{count}})"
+  },
+  "photoCard": {
+    "like": "Like",
+    "liked": "Liked"
+  },
+  "common": {
+    "title": "Pic4Pick - Photo Share",
+    "confirm": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close"
+  },
+  "share": {
+    "share": "Share",
+    "shareTo": "Share to",
+    "wechat": "WeChat",
+    "weibo": "Weibo",
+    "copyLink": "Copy Link",
+    "copied": "Copied",
+    "wechatTip": "Please screenshot or copy the link to share on WeChat",
+    "wechatCopiedTip": "Link copied. Paste it into WeChat to share."
+  },
+  "tags": {
+    "title": "Tags",
+    "allTags": "All Tags",
+    "tagCloud": "Tag Cloud",
+    "photosWithTag": "Photos tagged \"{{tag}}\"",
+    "noTags": "No tags yet",
+    "photoCount": "{{count}} photos"
+  },
+  "albums": {
+    "title": "Albums",
+    "allAlbums": "All Albums",
+    "createAlbum": "Create Album",
+    "editAlbum": "Edit Album",
+    "deleteAlbum": "Delete Album",
+    "albumName": "Album Name",
+    "albumDescription": "Description",
+    "coverPhoto": "Cover Photo",
+    "photosInAlbum": "Photos in Album",
+    "addPhotos": "Add Photos",
+    "removePhoto": "Remove Photo",
+    "noAlbums": "No albums yet",
+    "noPhotosInAlbum": "No photos in this album",
+    "deleteConfirm": "Are you sure you want to delete this album? Photos will not be deleted.",
+    "photoCount": "{{count}} photos"
+  }
+}

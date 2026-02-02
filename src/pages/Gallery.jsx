@@ -1,7 +1,9 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import PhotoCard from '../components/PhotoCard'
-import { apiRequest } from '../utils/apiClient'
+import { listPhotos } from '../api/photos'
+import { listCategories } from '../api/categories'
 import './Gallery.css'
 
 const PHOTOS_PER_PAGE = 12
@@ -23,8 +25,16 @@ function normalizePhoto(item) {
 }
 
 function Gallery() {
+  const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const categoryFromUrl = searchParams.get('category')
+  const keywordFromUrl = searchParams.get('keyword') || ''
+  
+  const [searchInput, setSearchInput] = useState(keywordFromUrl)
+
+  useEffect(() => {
+    setSearchInput(keywordFromUrl)
+  }, [keywordFromUrl])
   
   // 分类列表（从 API 动态加载）
   const [categories, setCategories] = useState([])
@@ -37,7 +47,7 @@ function Gallery() {
   useEffect(() => {
     let cancelled = false
     setCategoriesLoading(true)
-    apiRequest('/api/categories')
+    listCategories()
       .then((data) => {
         if (cancelled) return
         const cats = Array.isArray(data) ? data : []
@@ -120,17 +130,15 @@ function Gallery() {
       setLoading(true)
       setLoadError('')
       try {
-        const params = new URLSearchParams({
+        const result = await listPhotos({
           status: 'approved',
-          page: String(page),
-          pageSize: String(PHOTOS_PER_PAGE),
+          page,
+          pageSize: PHOTOS_PER_PAGE,
+          category: activeCategory || undefined,
+          keyword: keywordFromUrl.trim() || undefined,
+          lat: needsLocation && userPosition ? userPosition.lat : undefined,
+          lng: needsLocation && userPosition ? userPosition.lng : undefined,
         })
-        if (activeCategory) params.set('category', activeCategory)
-        if (needsLocation && userPosition) {
-          params.set('lat', String(userPosition.lat))
-          params.set('lng', String(userPosition.lng))
-        }
-        const result = await apiRequest(`/api/photos?${params.toString()}`)
         const items = (result.items || []).map(normalizePhoto)
         setDisplayedPhotos((prev) => (page === 1 ? items : [...prev, ...items]))
         setCurrentPage(page)
@@ -145,7 +153,7 @@ function Gallery() {
         loadingRef.current = false
       }
     },
-    [activeCategory, userPosition, needsLocation]
+    [activeCategory, userPosition, needsLocation, keywordFromUrl]
   )
 
   // 初始加载与切换分类时重置并加载；附近/远方在拿到位置后再加载
@@ -160,7 +168,7 @@ function Gallery() {
     setHasMore(true)
     loadingRef.current = false
     loadPhotos(1)
-  }, [activeCategory, loadPhotos, userPosition, locationError, categoriesLoading, needsLocation])
+  }, [activeCategory, loadPhotos, userPosition, locationError, categoriesLoading, needsLocation, keywordFromUrl])
 
   const activeIndex = categoryNames.indexOf(activeCategory)
 
@@ -224,48 +232,80 @@ function Gallery() {
   // 获取默认分类名称（用于 URL 参数判断）
   const defaultCategoryName = categoryNames[0] || '最新'
 
+  const handleSearchSubmit = (e) => {
+    e?.preventDefault?.()
+    const k = (searchInput || '').trim()
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (k) next.set('keyword', k)
+      else next.delete('keyword')
+      return next
+    })
+  }
+
   return (
     <div className="gallery-page">
       <div className="gallery-container">
-        {categoriesLoading ? (
-          <div className="category-bar category-bar--loading">
-            <span className="category-loading-text">加载分类中...</span>
-          </div>
-        ) : (
-          <div ref={categoryBarRef} className="category-bar">
-            <span
-              className="category-pill"
-              style={{
-                transform: `translateX(${pillStyle.left}px)`,
-                width: pillStyle.width,
-              }}
-              aria-hidden
-            />
-            {categoryNames.map((categoryName, i) => (
-              <button
-                ref={(el) => (buttonRefs.current[i] = el)}
-                key={categoryName}
-                className={`category-btn ${activeCategory === categoryName ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveCategory(categoryName)
-                  setSearchParams(categoryName === defaultCategoryName ? {} : { category: categoryName })
+        <div className="gallery-header-wrap">
+          {categoriesLoading ? (
+            <div className="category-bar category-bar--loading">
+              <span className="category-loading-text">{t('gallery.loadCategories')}</span>
+            </div>
+          ) : (
+            <div ref={categoryBarRef} className="category-bar">
+              <span
+                className="category-pill"
+                style={{
+                  transform: `translateX(${pillStyle.left}px)`,
+                  width: pillStyle.width,
                 }}
-              >
-                <span className="category-btn-text">{categoryName}</span>
-              </button>
-            ))}
-          </div>
-        )}
+                aria-hidden
+              />
+              {categoryNames.map((categoryName, i) => (
+                <button
+                  ref={(el) => (buttonRefs.current[i] = el)}
+                  key={categoryName}
+                  className={`category-btn ${activeCategory === categoryName ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveCategory(categoryName)
+                    setSearchParams(categoryName === defaultCategoryName ? {} : { category: categoryName })
+                  }}
+                >
+                  <span className="category-btn-text">{categoryName}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <form className="gallery-search-form" onSubmit={handleSearchSubmit}>
+          <input
+            type="search"
+            className="gallery-search-input"
+            placeholder={t('gallery.searchPlaceholder')}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            aria-label="搜索照片"
+          />
+          <button type="submit" className="gallery-search-btn" aria-label="搜索">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
+              <path d="M16 16l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </form>
+        </div>
 
         {loadError && (
           <div className="gallery-error">{loadError}</div>
         )}
 
         {needsLocation && !userPosition && !locationError && (
-          <div className="gallery-hint">正在获取位置…</div>
+          <div className="gallery-hint">{t('gallery.getLocation')}</div>
         )}
         {needsLocation && locationError && (
-          <div className="gallery-hint gallery-hint--warn">{locationError}</div>
+          <div className="gallery-hint gallery-hint--warn">
+            {locationError === '当前浏览器不支持定位' ? t('gallery.geoNotSupported') : t('gallery.locationError')}
+          </div>
         )}
 
         <div className="photo-grid">
@@ -275,7 +315,7 @@ function Gallery() {
         </div>
 
         {!loadError && displayedPhotos.length === 0 && !loading && (
-          <div className="gallery-empty">暂无照片，去管理后台上传吧</div>
+          <div className="gallery-empty">{t('gallery.empty')}</div>
         )}
 
         {/* 加载指示器和观察目标 */}
@@ -283,13 +323,11 @@ function Gallery() {
           {loading && (
             <div className="loading-indicator">
               <div className="loading-spinner"></div>
-              <span>加载中...</span>
+              <span>{t('gallery.loading')}</span>
             </div>
           )}
           {!hasMore && displayedPhotos.length > 0 && (
-            <div className="no-more-photos">
-              没有更多照片了
-            </div>
+            <div className="no-more-photos">{t('gallery.noMore')}</div>
           )}
         </div>
       </div>

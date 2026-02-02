@@ -1,10 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Lightbox from 'yet-another-react-lightbox'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 import { getDetailPreviewUrl } from '../utils/imageUrl'
-import { apiRequest } from '../utils/apiClient'
+import { getPhoto } from '../api/photos'
 import AMapContainer from '../components/AMapContainer'
+import SharePanel from '../components/SharePanel'
 import './PhotoDetail.css'
 
 /** 将 API 返回的单张照片转为详情页展示格式 */
@@ -32,6 +34,7 @@ function normalizeDetailPhoto(row) {
 }
 
 function PhotoDetail() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
   const [photo, setPhoto] = useState(null)
@@ -44,13 +47,13 @@ function PhotoDetail() {
   useEffect(() => {
     if (!id) {
       setLoading(false)
-      setError('无效的照片 ID')
+      setError(t('photoDetail.invalidId'))
       return
     }
     let cancelled = false
     setLoading(true)
     setError('')
-    apiRequest(`/api/photos/${id}`)
+    getPhoto(id)
       .then((data) => {
         if (!cancelled && data) setPhoto(normalizeDetailPhoto(data))
       })
@@ -63,8 +66,41 @@ function PhotoDetail() {
     return () => { cancelled = true }
   }, [id])
 
+  // Open Graph / 分享元信息：照片加载后更新 title 与 og 标签
+  useEffect(() => {
+    if (!photo) return
+    const defaultTitle = 'Pic4Pick - 照片分享'
+    const prevTitle = document.title
+    document.title = `${photo.title} - Pic4Pick`
+
+    const imgUrl = photo.preview_url || getDetailPreviewUrl(photo.oss_url || photo.image)
+    const absImage = imgUrl && (imgUrl.startsWith('http') ? imgUrl : new URL(imgUrl, window.location.origin).href)
+    const shareUrl = window.location.href
+
+    const setMeta = (nameOrProp, content, isProperty = false) => {
+      const attr = isProperty ? 'property' : 'name'
+      let el = document.querySelector(`meta[${attr}="${nameOrProp}"]`)
+      if (!el) {
+        el = document.createElement('meta')
+        el.setAttribute(attr, nameOrProp)
+        document.head.appendChild(el)
+      }
+      el.setAttribute('content', content || '')
+    }
+
+    setMeta('og:title', `${photo.title} - Pic4Pick`, true)
+    setMeta('og:image', absImage, true)
+    setMeta('og:url', shareUrl, true)
+    setMeta('og:description', photo.location ? `${photo.title} · ${photo.location}` : photo.title, true)
+    setMeta('og:type', 'website', true)
+
+    return () => {
+      document.title = prevTitle || defaultTitle
+    }
+  }, [photo])
+
   if (loading) {
-    return <div className="photo-detail-loading">加载中...</div>
+    return <div className="photo-detail-loading">{t('photoDetail.loading')}</div>
   }
 
   if (error || !photo) {
@@ -75,9 +111,9 @@ function PhotoDetail() {
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            返回
+            {t('photoDetail.back')}
           </button>
-          <div className="photo-detail-error">{error || '照片不存在'}</div>
+          <div className="photo-detail-error">{error || t('photoDetail.notFound')}</div>
         </div>
       </div>
     )
@@ -94,15 +130,25 @@ function PhotoDetail() {
     setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
+  const shareImageUrl = photo.preview_url || getDetailPreviewUrl(photo.oss_url || photo.image)
+
   return (
     <div className="photo-detail-page">
       <div className="photo-detail-container">
-        <button className="back-button" onClick={() => navigate(-1)}>
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          返回
-        </button>
+        <div className="photo-detail-header">
+          <button className="back-button" onClick={() => navigate(-1)}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {t('photoDetail.back')}
+          </button>
+          <SharePanel
+            title={`${photo.title} - Pic4Pick`}
+            url={window.location.href}
+            image={shareImageUrl}
+            description={photo.location ? `${photo.title} · ${photo.location}` : photo.title}
+          />
+        </div>
 
         <div className="photo-detail-content">
           <div
@@ -111,7 +157,7 @@ function PhotoDetail() {
             onKeyDown={(e) => e.key === 'Enter' && setLightboxOpen(true)}
             role="button"
             tabIndex={0}
-            title="点击放大查看"
+            title={t('photoDetail.clickZoom')}
           >
             <img src={previewUrl} alt={photo.title} className="detail-photo-image" />
           </div>
@@ -136,7 +182,7 @@ function PhotoDetail() {
                     <path d="M310.840889 577.422222a28.444444 28.444444 0 0 1 28.444444-28.444444h398.222223a28.444444 28.444444 0 1 1 0 56.888889h-398.222223a28.444444 28.444444 0 0 1-28.444444-28.444445zM310.840889 732.444444a28.444444 28.444444 0 0 1 28.444444-28.444444h398.222223a28.444444 28.444444 0 1 1 0 56.888889h-398.222223a28.444444 28.444444 0 0 1-28.444444-28.444445zM369.777778 308.622222v85.333334H455.111111v-85.333334H369.777778z m-28.444445-56.888889h142.222223a28.444444 28.444444 0 0 1 28.444444 28.444445v142.222222a28.444444 28.444444 0 0 1-28.444444 28.444444H341.333333a28.444444 28.444444 0 0 1-28.444444-28.444444v-142.222222a28.444444 28.444444 0 0 1 28.444444-28.444445zM579.356444 280.177778a28.444444 28.444444 0 0 1 28.444445-28.444445h115.484444a28.444444 28.444444 0 0 1 0 56.888889h-115.484444a28.444444 28.444444 0 0 1-28.444445-28.444444zM579.356444 422.4a28.444444 28.444444 0 0 1 28.444445-28.444444h115.484444a28.444444 28.444444 0 0 1 0 56.888888h-115.484444a28.444444 28.444444 0 0 1-28.444445-28.444444z" fill="currentColor"/>
                     <path d="M840.988444 184.888889v654.222222H235.804444V184.888889h605.184z m-605.184-56.888889a56.888889 56.888889 0 0 0-56.888888 56.888889v654.222222a56.888889 56.888889 0 0 0 56.888888 56.888889h605.184a56.888889 56.888889 0 0 0 56.888889-56.888889V184.888889a56.888889 56.888889 0 0 0-56.888889-56.888889H235.804444z" fill="currentColor"/>
                   </svg>
-                  作品信息
+                  {t('photoDetail.workInfo')}
                 </span>
                 <svg className="info-card-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
                   <path d="M7.5 5l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -199,7 +245,7 @@ function PhotoDetail() {
                     <path d="M979.2 569.6h-89.6l-6.4-25.6c-6.4-25.6-32-44.8-57.6-44.8H614.4c-25.6 0-51.2 19.2-57.6 44.8l-12.8 25.6H454.4c-25.6 0-44.8 19.2-44.8 44.8v364.8c0 25.6 19.2 44.8 44.8 44.8h524.8c25.6 0 44.8-19.2 44.8-44.8V614.4c0-25.6-19.2-44.8-44.8-44.8z m-25.6 384H480v-320h89.6l12.8-38.4c6.4-19.2 25.6-32 44.8-32h179.2c19.2 0 38.4 12.8 44.8 32l12.8 38.4h89.6v320z" fill="currentColor"/>
                     <path d="M716.8 659.2c-70.4 0-128 57.6-128 128s57.6 128 128 128 128-57.6 128-128-57.6-128-128-128z m0 185.6c-32 0-57.6-25.6-57.6-57.6s25.6-57.6 57.6-57.6 57.6 25.6 57.6 57.6-25.6 57.6-57.6 57.6zM128 320h448v64H128zM128 448h320v64H128zM128 576h192v64H128zM128 704h192v64H128z" fill="currentColor"/>
                   </svg>
-                  相机参数
+                  {t('photoDetail.cameraParams')}
                 </span>
                 <svg className="info-card-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
                   <path d="M7.5 5l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -249,7 +295,7 @@ function PhotoDetail() {
                       <path d="M10 2C6.5 2 3.5 5 3.5 8.5c0 4 6.5 9.5 6.5 9.5s6.5-5.5 6.5-9.5C16.5 5 13.5 2 10 2z" stroke="currentColor" strokeWidth="1.5" fill="none"/>
                       <circle cx="10" cy="8.5" r="2" fill="currentColor"/>
                     </svg>
-                    地理位置
+                    {t('photoDetail.location')}
                   </span>
                   <svg className="info-card-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
                     <path d="M7.5 5l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

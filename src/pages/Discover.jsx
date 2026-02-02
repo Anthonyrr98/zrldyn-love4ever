@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import AMapContainer from '../components/AMapContainer'
-import { apiRequest } from '../utils/apiClient'
+import { listPhotos, getLocations } from '../api/photos'
 import './Discover.css'
 
 // 省/市名称 -> [经度, 纬度]，用于侧栏地点无经纬度时在地图上显示
@@ -47,6 +48,7 @@ const LOCATION_CENTERS = {
 }
 
 function Discover() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const [locations, setLocations] = useState([])
   const [locationsLoading, setLocationsLoading] = useState(true)
@@ -73,7 +75,7 @@ function Discover() {
       setLocationsLoading(true)
       setLocationsError('')
     }
-    apiRequest('/api/photos/locations')
+    getLocations()
       .then((data) => {
         if (Array.isArray(data)) {
           setLocations(data)
@@ -93,7 +95,7 @@ function Discover() {
     let cancelled = false
     setLocationsLoading(true)
     setLocationsError('')
-    apiRequest('/api/photos/locations')
+    getLocations()
       .then((data) => {
         if (!cancelled && Array.isArray(data)) {
           setLocations(data)
@@ -121,7 +123,7 @@ function Discover() {
 
   useEffect(() => {
     let cancelled = false
-    apiRequest('/api/photos?status=approved&pageSize=500')
+    listPhotos({ status: 'approved', pageSize: 500 })
       .then((res) => {
         if (cancelled || !res?.items) return
         const items = (res.items || []).filter((p) => p.lat != null && p.lng != null)
@@ -191,18 +193,15 @@ function Discover() {
     <div className="discover-page">
       <div className="discover-container">
         <aside className="location-sidebar">
-          <div className="location-sidebar-header">
-            <h2 className="location-sidebar-title">按地点</h2>
-          </div>
           <div className="location-sidebar-list">
             {locationsLoading && (
-              <div className="location-sidebar-loading">加载地点中…</div>
+              <div className="location-sidebar-loading">{t('discover.loadLocations')}</div>
             )}
             {!locationsLoading && locationsError && (
-              <div className="location-sidebar-error">{locationsError}</div>
+              <div className="location-sidebar-error">{locationsError || t('discover.loadError')}</div>
             )}
             {!locationsLoading && !locationsError && locations.length === 0 && (
-              <div className="location-sidebar-empty">暂无已上传的地点</div>
+              <div className="location-sidebar-empty">{t('discover.empty')}</div>
             )}
             {!locationsLoading && !locationsError && locations.map((location) => (
               <div key={location.name} className="location-section">
@@ -288,7 +287,7 @@ function Discover() {
           <div className="discover-photo-popup-overlay" onClick={() => setSelectedLocationPhotos(null)} role="presentation">
             <div className="discover-photo-popup" onClick={(e) => e.stopPropagation()}>
               <div className="discover-photo-popup-header">
-                <h3>此地点的照片（{selectedLocationPhotos.length} 张）</h3>
+                <h3>{t('discover.photosAtLocation', { count: selectedLocationPhotos.length })}</h3>
                 <button type="button" className="discover-photo-popup-close" onClick={() => setSelectedLocationPhotos(null)} aria-label="关闭">×</button>
               </div>
               <div className="discover-photo-popup-list">

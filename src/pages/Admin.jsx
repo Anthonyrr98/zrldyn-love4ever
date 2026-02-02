@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import exifr from 'exifr'
 import LoginForm from '../components/LoginForm'
 import LocationPickerModal from '../components/LocationPickerModal'
+import Select from '../components/Select'
+import DatePicker from '../components/DatePicker'
 import { apiRequest, loadAuth, clearAuth, getToken } from '../utils/apiClient'
 import './Admin.css'
 
@@ -1032,40 +1034,27 @@ function Admin() {
                   <label>
                     拍摄日期 <span className="required">*</span>
                   </label>
-                  <div className="date-input-wrapper">
-                    <input
-                      type="date"
-                      name="date"
-                      value={formData.date}
-                      onChange={handleInputChange}
-                      placeholder="yyyy/mm/dd"
-                      required
-                    />
-                    <svg className="date-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
-                      <path d="M4 4h12v12H4V4z" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                      <path d="M4 8h12M7 4v4M13 4v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                  </div>
+                  <DatePicker
+                    value={formData.date}
+                    onChange={(next) => setFormData((prev) => ({ ...prev, date: next }))}
+                    placeholder="YYYY-MM-DD"
+                    required
+                  />
                 </div>
 
                 <div className="form-group">
                   <label>
                     分类 <span className="required">*</span>
                   </label>
-                  <select
-                    name="category"
+                  <Select
                     value={formData.category}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    {categories.length > 0 ? (
-                      categories.map((cat) => (
-                        <option key={cat.id} value={cat.name}>{cat.name}</option>
-                      ))
-                    ) : (
-                      <option value="精选">精选</option>
-                    )}
-                  </select>
+                    onChange={(next) => setFormData((prev) => ({ ...prev, category: next }))}
+                    options={(categories?.length ? categories : [{ id: 'fallback', name: '精选' }]).map((cat) => ({
+                      value: cat.name,
+                      label: cat.name,
+                    }))}
+                    searchable
+                  />
                 </div>
 
                 <div className="form-group form-group-full">
@@ -1832,19 +1821,23 @@ function Admin() {
                   </div>
                   <div className="form-group">
                     <label>拍摄日期</label>
-                    <input type="date" name="date" value={editFormData.date || ''} onChange={handleEditInputChange} />
+                    <DatePicker
+                      value={editFormData.date || ''}
+                      onChange={(next) => setEditFormData((prev) => (prev ? { ...prev, date: next } : prev))}
+                      placeholder="YYYY-MM-DD"
+                    />
                   </div>
                   <div className="form-group">
                     <label>分类</label>
-                    <select name="category" value={editFormData.category || categories[0]?.name || '精选'} onChange={handleEditInputChange}>
-                      {categories.length > 0 ? (
-                        categories.map((cat) => (
-                          <option key={cat.id} value={cat.name}>{cat.name}</option>
-                        ))
-                      ) : (
-                        <option value="精选">精选</option>
-                      )}
-                    </select>
+                    <Select
+                      value={editFormData.category || categories[0]?.name || '精选'}
+                      onChange={(next) => setEditFormData((prev) => (prev ? { ...prev, category: next } : prev))}
+                      options={(categories?.length ? categories : [{ id: 'fallback', name: '精选' }]).map((cat) => ({
+                        value: cat.name,
+                        label: cat.name,
+                      }))}
+                      searchable
+                    />
                   </div>
                   <div className="form-group form-group-full">
                     <label>标签</label>

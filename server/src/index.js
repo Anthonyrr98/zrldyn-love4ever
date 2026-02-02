@@ -8,7 +8,8 @@ import authRoutes from './routes/auth.js'
 import photosRoutes from './routes/photos.js'
 import configRoutes from './routes/config.js'
 import categoriesRoutes from './routes/categories.js'
-import { getLocationHierarchy } from './services/photoService.js'
+import setupRoutes from './routes/setup.js'
+import * as photoController from './controllers/photoController.js'
 
 const app = express()
 
@@ -64,15 +65,11 @@ app.use('/api/auth', authRoutes)
 // Categories
 app.use('/api/categories', categoriesRoutes)
 
-// Photos：先注册 /locations，避免被 /:id 误匹配为 id=locations
-app.get('/api/photos/locations', async (req, res, next) => {
-  try {
-    const hierarchy = await getLocationHierarchy()
-    res.json(hierarchy)
-  } catch (err) {
-    next(err)
-  }
-})
+// Setup status (首次部署提示)
+app.use('/api/setup', setupRoutes)
+
+// Photos：先注册特定路径，避免被 /:id 误匹配
+app.get('/api/photos/locations', photoController.getLocations)
 app.use('/api/photos', photosRoutes)
 
 // App config

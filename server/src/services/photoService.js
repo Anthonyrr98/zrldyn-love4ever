@@ -2,13 +2,13 @@ import { getDbPool } from '../config/db.js'
 import { deletePhotoFromOss } from './ossService.js'
 
 const PHOTOS_SELECT_FULL = `id, title, location_province, location_city, location_country, shot_date,
-  category, tags, rating, lat, lng, oss_key, oss_url,
+  category, tags, rating, likes, lat, lng, oss_key, oss_url,
   thumbnail_url, preview_url,
   status, reject_reason, hidden,
   focal_length, aperture, shutter_speed, iso, camera, lens,
   created_at, updated_at`
 const PHOTOS_SELECT_MINIMAL = `id, title, location_province, location_city, location_country, shot_date,
-  category, tags, rating, lat, lng, oss_key, oss_url,
+  category, tags, rating, likes, lat, lng, oss_key, oss_url,
   thumbnail_url, preview_url,
   status, reject_reason,
   created_at, updated_at`
@@ -28,9 +28,9 @@ export async function listPhotos({ status, category, keyword, page = 1, pageSize
     params.push(category)
   }
   if (keyword) {
-    where.push('(title LIKE ? OR location_city LIKE ? OR location_country LIKE ?)')
+    where.push('(title LIKE ? OR tags LIKE ? OR location_city LIKE ? OR location_country LIKE ? OR location_province LIKE ?)')
     const like = `%${keyword}%`
-    params.push(like, like, like)
+    params.push(like, like, like, like, like)
   }
   if (!showHidden) {
     where.push('(hidden IS NULL OR hidden = 0)')
@@ -89,9 +89,9 @@ export async function listPhotos({ status, category, keyword, page = 1, pageSize
         paramsMinimal.push(category)
       }
       if (keyword) {
-        whereMinimal.push('(title LIKE ? OR location_city LIKE ? OR location_country LIKE ?)')
+        whereMinimal.push('(title LIKE ? OR tags LIKE ? OR location_city LIKE ? OR location_country LIKE ? OR location_province LIKE ?)')
         const like = `%${keyword}%`
-        paramsMinimal.push(like, like, like)
+        paramsMinimal.push(like, like, like, like, like)
       }
       if (needLocation) {
         whereMinimal.push('lat IS NOT NULL AND lng IS NOT NULL')
@@ -109,6 +109,7 @@ export async function listPhotos({ status, category, keyword, page = 1, pageSize
       )
       rows = (r || []).map((row) => ({
         ...row,
+        likes: row.likes ?? 0,
         hidden: 0,
         focal_length: null,
         aperture: null,
@@ -368,7 +369,7 @@ export async function getPhotoById(id, options = {}) {
         [id],
       )
       const r = rows[0] || null
-      row = r ? { ...r, hidden: 0, focal_length: null, aperture: null, shutter_speed: null, iso: null, camera: null, lens: null } : null
+      row = r ? { ...r, likes: r.likes ?? 0, hidden: 0, focal_length: null, aperture: null, shutter_speed: null, iso: null, camera: null, lens: null } : null
     } else {
       throw err
     }
@@ -376,6 +377,56 @@ export async function getPhotoById(id, options = {}) {
   if (!row) return null
   if (options.publicOnly && (row.status !== 'approved' || (row.hidden != null && row.hidden !== 0))) return null
   return row
+}
+
+/** 点赞：仅对已审核且未隐藏的照片有效，返回新的 likes 数 */
+export async function incrementPhotoLike(id) {
+  const pool = getDbPool()
+  const photo = await getPhotoById(id, { publicOnly: true })
+  if (!photo) {
+    const err = new Error('照片不存在')
+    err.status = 404
+    throw err
+  }
+  try {
+    const [result] = await pool.query(
+      'UPDATE photos SET likes = COALESCE(likes, 0) + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [id],
+    )
+    if (result.affectedRows === 0) return (photo.likes ?? 0)
+    const [[row]] = await pool.query('SELECT COALESCE(likes, 0) AS likes FROM photos WHERE id = ?', [id])
+    return Number(row?.likes) || (photo.likes ?? 0) + 1
+  } catch (err) {
+    if (err.code === 'ER_BAD_FIELD_ERROR') {
+      return (photo.likes ?? 0)
+    }
+    throw err
+  }
+}
+
+/** 取消点赞：仅对已审核且未隐藏的照片有效，返回新的 likes 数（不低于 0） */
+export async function decrementPhotoLike(id) {
+  const pool = getDbPool()
+  const photo = await getPhotoById(id, { publicOnly: true })
+  if (!photo) {
+    const err = new Error('照片不存在')
+    err.status = 404
+    throw err
+  }
+  try {
+    const [result] = await pool.query(
+      'UPDATE photos SET likes = GREATEST(COALESCE(likes, 0) - 1, 0), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [id],
+    )
+    if (result.affectedRows === 0) return (photo.likes ?? 0)
+    const [[row]] = await pool.query('SELECT COALESCE(likes, 0) AS likes FROM photos WHERE id = ?', [id])
+    return Number(row?.likes) || 0
+  } catch (err) {
+    if (err.code === 'ER_BAD_FIELD_ERROR') {
+      return (photo.likes ?? 0)
+    }
+    throw err
+  }
 }
 
 export async function updatePhotoStatus(id, status, rejectReason = null) {
@@ -498,5 +549,3 @@ export async function deletePhoto(id) {
   }
   return { deleted: true, id: Number(id) }
 }
-
-

@@ -23,12 +23,20 @@
   text-align: center;
 }
 
+.photo-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
 .back-button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  margin-bottom: 24px;
   background: var(--bg-soft);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);

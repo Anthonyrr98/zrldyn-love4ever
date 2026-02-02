@@ -1,5 +1,6 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
 import Header from './components/Header'
+import SetupBanner from './components/SetupBanner'
 import Gallery from './pages/Gallery'
 import Discover from './pages/Discover'
 import Admin from './pages/Admin'
@@ -11,6 +12,7 @@ function App() {
   return (
     <div className="app">
       <Header />
+      <SetupBanner />
       <div key={location.pathname} className="route-transition">
         <Routes>
           <Route path="/" element={<Gallery />} />
