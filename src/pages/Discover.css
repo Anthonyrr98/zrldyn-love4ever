@@ -386,3 +386,44 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* 移动端布局：地点列表与地图上下堆叠 */
+@media (max-width: 900px) {
+  .discover-page {
+    height: auto;
+    min-height: calc(100vh - 72px);
+    overflow: visible;
+  }
+
+  .discover-container {
+    flex-direction: column;
+  }
+
+  .location-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .location-sidebar-list {
+    max-height: 260px;
+  }
+
+  .map-container {
+    padding: 16px;
+  }
+
+  .map-view {
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 600px) {
+  .discover-photo-popup-overlay {
+    padding: 16px;
+  }
+
+  .discover-photo-popup {
+    max-width: 100%;
+  }
+}

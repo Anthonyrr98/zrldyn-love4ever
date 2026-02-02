@@ -221,3 +221,62 @@
 html[data-theme="dark"] .user-role-badge {
   border-color: rgba(15, 20, 28, 0.85);
 }
+
+/* 移动端 Header 优化：减小 padding，避免挤压 */
+@media (max-width: 768px) {
+  .header-content {
+    padding: 10px 16px;
+  }
+
+  .logo-title {
+    font-size: 16px;
+  }
+
+  .logo-subtitle {
+    font-size: 10px;
+  }
+
+  .header-icon {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .avatar-circle {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-content {
+    padding: 8px 12px;
+  }
+
+  .header-content .logo-section {
+    position: static;
+    left: auto;
+    transform: none;
+    margin-right: auto;
+  }
+
+  .header-left {
+    display: none;
+  }
+
+  .logo-title {
+    font-size: 15px;
+  }
+
+  .logo-subtitle {
+    display: none;
+  }
+
+  .header-nav-wrap {
+    gap: 4px;
+  }
+
+  .header-icon {
+    padding-inline: 10px;
+  }
+}

@@ -588,6 +588,39 @@
   overflow: hidden;
 }
 
+/* 移动端：减小边距，信息栅格单列，对齐按钮尺寸 */
+@media (max-width: 768px) {
+  .photo-detail-page {
+    padding: 20px 16px 36px;
+  }
+
+  .photo-detail-content {
+    max-width: 100%;
+  }
+
+  .back-button {
+    padding-inline: 16px;
+  }
+
+  .photo-comment-submit {
+    min-width: 110px;
+  }
+}
+
+@media (max-width: 520px) {
+  .photo-detail-page {
+    padding: 16px 12px 32px;
+  }
+
+  .photo-detail-header {
+    gap: 12px;
+  }
+
+  .photo-comments-body {
+    padding-inline: 12px;
+  }
+}
+
 @media (max-width: 520px) {
   .info-grid {
     grid-template-columns: 1fr;

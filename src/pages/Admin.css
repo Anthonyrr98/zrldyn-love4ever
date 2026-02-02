@@ -33,6 +33,12 @@
   margin: 0;
 }
 
+@media (max-width: 480px) {
+  .admin-page--login {
+    padding: 16px;
+  }
+}
+
 .admin-container {
   width: 100%;
   max-width: 640px;
@@ -763,6 +769,15 @@
   transition: box-shadow 0.2s var(--ease-out);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .upload-section,
+  .form-section,
+  .photo-list-section,
+  .config-section {
+    padding: 22px 18px 24px;
+  }
 }
 
 .photo-list-item:hover {

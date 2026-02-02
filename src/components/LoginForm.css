@@ -196,3 +196,18 @@
 .login-footer--right {
   justify-content: flex-end;
 }
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 24px 20px;
+    border-radius: var(--radius-md);
+  }
+
+  .login-title {
+    font-size: 18px;
+  }
+
+  .login-subtitle {
+    font-size: 12px;
+  }
+}

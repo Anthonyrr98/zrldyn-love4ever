@@ -122,3 +122,27 @@
 .photo-like-count {
   line-height: 1;
 }
+
+/* 移动端卡片留白与触控优化 */
+@media (max-width: 480px) {
+  .photo-card {
+    border-radius: var(--radius);
+  }
+
+  .photo-info {
+    padding: 12px 12px 10px;
+    gap: 10px;
+  }
+
+  .photo-title {
+    font-size: 13px;
+  }
+
+  .photo-location {
+    font-size: 11px;
+  }
+
+  .photo-like-btn {
+    padding: 6px 12px;
+  }
+}
