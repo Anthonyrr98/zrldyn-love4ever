@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import Lightbox from 'yet-another-react-lightbox'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 import { getDetailPreviewUrl } from '../utils/imageUrl'
-import { getPhoto } from '../api/photos'
+import { getPhoto, recordPhotoView, listPhotoComments, createPhotoComment, deletePhotoComment } from '../api/photos'
+import { loadAuth } from '../utils/apiClient'
 import AMapContainer from '../components/AMapContainer'
 import SharePanel from '../components/SharePanel'
 import './PhotoDetail.css'
@@ -43,6 +44,14 @@ function PhotoDetail() {
   const [showMapDialog, setShowMapDialog] = useState(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [expandedSections, setExpandedSections] = useState({ work: true, camera: false, location: false })
+  const [comments, setComments] = useState([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [commentError, setCommentError] = useState('')
+  const [commentAuthor, setCommentAuthor] = useState('')
+  const [commentContent, setCommentContent] = useState('')
+  const [commentSubmitting, setCommentSubmitting] = useState(false)
+  const { user } = typeof window !== 'undefined' ? loadAuth() : { user: null }
+  const isAdmin = !!user && user.role === 'admin'
 
   useEffect(() => {
     if (!id) {
@@ -62,6 +71,40 @@ function PhotoDetail() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [id])
+
+  // 访问统计：同一 Tab 会话内同一照片只上报一次
+  useEffect(() => {
+    if (!id) return
+    const key = `pic4pick-viewed-${id}`
+    try {
+      if (sessionStorage.getItem(key)) return
+      sessionStorage.setItem(key, '1')
+    } catch {
+      // ignore
+    }
+    recordPhotoView(id).catch(() => {})
+  }, [id])
+
+  // 加载评论列表
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    setCommentsLoading(true)
+    setCommentError('')
+    listPhotoComments(id, { limit: 100 })
+      .then((data) => {
+        if (cancelled) return
+        setComments((data && Array.isArray(data.items)) ? data.items : [])
+      })
+      .catch(() => {
+        if (cancelled) return
+        setCommentError('加载评论失败')
+      })
+      .finally(() => {
+        if (!cancelled) setCommentsLoading(false)
       })
     return () => { cancelled = true }
   }, [id])
@@ -131,6 +174,46 @@ function PhotoDetail() {
   }
 
   const shareImageUrl = photo.preview_url || getDetailPreviewUrl(photo.oss_url || photo.image)
+
+  const handleSubmitComment = async (e) => {
+    e.preventDefault()
+    if (!id || commentSubmitting) return
+    if (!user) {
+      setCommentError('请先登录后再发表评论')
+      return
+    }
+    const content = (commentContent || '').trim()
+    if (!content) {
+      setCommentError('评论内容不能为空')
+      return
+    }
+    if (content.length > 1000) {
+      setCommentError('评论内容过长（最多 1000 字）')
+      return
+    }
+    setCommentError('')
+    setCommentSubmitting(true)
+    try {
+      const created = await createPhotoComment(id, {
+        author: (commentAuthor || '').trim(),
+        content,
+      })
+      if (created) {
+        setComments((prev) => [...prev, created])
+        setCommentContent('')
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err)
+      if (err?.status === 404) {
+        setCommentError('当前照片暂不支持评论，可能已被下架或隐藏。')
+      } else {
+        setCommentError(err?.data?.message || err?.message || '提交评论失败，请稍后重试。')
+      }
+    } finally {
+      setCommentSubmitting(false)
+    }
+  }
 
   return (
     <div className="photo-detail-page">
@@ -359,6 +442,101 @@ function PhotoDetail() {
                 </div>
               </div>
             )}
+
+            <div className="info-card photo-comments">
+              <div className="photo-comments-header">
+                <h3 className="photo-comments-title">评论</h3>
+                <span className="photo-comments-count">
+                  {comments.length ? `${comments.length} 条` : '暂无评论'}
+                </span>
+              </div>
+              <div className="photo-comments-body">
+                {commentsLoading ? (
+                  <div className="photo-comments-empty">评论加载中...</div>
+                ) : comments.length === 0 ? (
+                  <div className="photo-comments-empty">还没有评论，来写第一条吧。</div>
+                ) : (
+                  <ul className="photo-comments-list">
+                    {comments.map((c) => (
+                      <li key={c.id} className="photo-comment-item">
+                        <div className="photo-comment-meta">
+                          <span className="photo-comment-author">
+                            {c.author || '游客'}
+                          </span>
+                          <span className="photo-comment-time">
+                            {c.created_at
+                              ? new Date(c.created_at).toLocaleString('zh-CN', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : ''}
+                          </span>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              className="photo-comment-delete"
+                              onClick={async () => {
+                                try {
+                                  await deletePhotoComment(id, c.id)
+                                  setComments((prev) => prev.filter((x) => x.id !== c.id))
+                                } catch (err) {
+                                  // eslint-disable-next-line no-console
+                                  console.error(err)
+                                  setCommentError(err?.data?.message || err?.message || '删除评论失败')
+                                }
+                              }}
+                            >
+                              删除
+                            </button>
+                          )}
+                        </div>
+                        <div className="photo-comment-content">
+                          {c.content}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <form className="photo-comment-form" onSubmit={handleSubmitComment}>
+                  <div className="photo-comment-form-row">
+                    <input
+                      type="text"
+                      className="photo-comment-input photo-comment-input--author"
+                      placeholder="昵称（可选）"
+                      maxLength={64}
+                      value={commentAuthor}
+                      onChange={(e) => setCommentAuthor(e.target.value)}
+                    />
+                  </div>
+                  <div className="photo-comment-form-row">
+                    <textarea
+                      className="photo-comment-input photo-comment-input--content"
+                      placeholder="写下你的想法（最多 1000 字）"
+                      value={commentContent}
+                      onChange={(e) => setCommentContent(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  {commentError && (
+                    <div className="photo-comment-error">{commentError}</div>
+                  )}
+                  <div className="photo-comment-actions">
+                    <button
+                      type="submit"
+                      className="photo-comment-submit"
+                      disabled={commentSubmitting || !user}
+                      title={!user ? '登录后才能发表评论' : undefined}
+                    >
+                      {commentSubmitting ? '提交中…' : user ? '发表评论' : '请登录后评论'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       </div>

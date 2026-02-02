@@ -7,6 +7,13 @@ export function login(username, password) {
   })
 }
 
+export function register(payload) {
+  return apiRequest('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  })
+}
+
 export function saveAuth(token, user) {
   return _saveAuth(token, user)
 }

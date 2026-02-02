@@ -102,6 +102,13 @@ function Header() {
   const userAvatarLetter = user?.username
     ? String(user.username).trim().slice(0, 1).toUpperCase() || siteConfig.avatar_letter
     : siteConfig.avatar_letter
+  const roleLabel = user?.role === 'admin' ? '管理员' : user?.role === 'viewer' ? '访客' : ''
+  const roleBadgeText = user?.role === 'admin' ? 'A' : user?.role === 'viewer' ? 'V' : 'U'
+
+  const avatarTarget = user?.role === 'admin' ? '/admin' : '/auth'
+  const avatarTitle = user
+    ? `用户 ${user.username}${roleLabel ? `（${roleLabel}）` : ''}`
+    : '登录 / 注册'
 
   return (
     <header className="header">
@@ -150,13 +157,26 @@ function Header() {
             </Link>
           </div>
 
-          <Link to="/admin" className="user-avatar" title={user ? `用户 ${user.username}` : t('header.admin')}>
+          <Link
+            to={avatarTarget}
+            className="user-avatar"
+            title={avatarTitle}
+          >
             {avatarImageUrl ? (
               <div className="avatar-circle avatar-circle--img">
                 <img src={avatarImageUrl} alt="" />
               </div>
             ) : (
               <div className="avatar-circle" aria-hidden>{userAvatarLetter}</div>
+            )}
+            {user && (
+              <span
+                className={`user-role-badge ${user.role === 'admin' ? 'user-role-badge--admin' : 'user-role-badge--viewer'}`}
+                title={roleLabel || ''}
+                aria-label={roleLabel || '用户'}
+              >
+                {roleBadgeText}
+              </span>
             )}
           </Link>
         </div>

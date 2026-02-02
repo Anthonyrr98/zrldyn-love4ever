@@ -49,6 +49,10 @@ async function run() {
         } catch (err) {
           if (err.code === 'ER_DUP_FIELDNAME' || err.message?.includes('Duplicate column name')) {
             console.log('  ⊘ 列已存在，跳过:', err.sqlMessage || err.message)
+          } else if (err.code === 'ER_DUP_KEYNAME' || err.message?.includes('Duplicate key name')) {
+            console.log('  ⊘ 索引已存在，跳过:', err.sqlMessage || err.message)
+          } else if (err.message?.toLowerCase().includes('duplicate key')) {
+            console.log('  ⊘ 约束已存在，跳过:', err.sqlMessage || err.message)
           } else if (err.code === 'ER_TABLE_EXISTS_ERROR' || err.message?.includes('already exists')) {
             console.log('  ⊘ 表已存在，跳过')
           } else {

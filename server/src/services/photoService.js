@@ -2,12 +2,23 @@ import { getDbPool } from '../config/db.js'
 import { deletePhotoFromOss } from './ossService.js'
 
 const PHOTOS_SELECT_FULL = `id, title, location_province, location_city, location_country, shot_date,
+  category, tags, rating, likes, views, lat, lng, oss_key, oss_url,
+  thumbnail_url, preview_url,
+  status, reject_reason, hidden,
+  focal_length, aperture, shutter_speed, iso, camera, lens,
+  created_at, updated_at`
+const PHOTOS_SELECT_FULL_LEGACY_NO_VIEWS = `id, title, location_province, location_city, location_country, shot_date,
   category, tags, rating, likes, lat, lng, oss_key, oss_url,
   thumbnail_url, preview_url,
   status, reject_reason, hidden,
   focal_length, aperture, shutter_speed, iso, camera, lens,
   created_at, updated_at`
 const PHOTOS_SELECT_MINIMAL = `id, title, location_province, location_city, location_country, shot_date,
+  category, tags, rating, likes, views, lat, lng, oss_key, oss_url,
+  thumbnail_url, preview_url,
+  status, reject_reason,
+  created_at, updated_at`
+const PHOTOS_SELECT_MINIMAL_LEGACY_NO_VIEWS = `id, title, location_province, location_city, location_country, shot_date,
   category, tags, rating, likes, lat, lng, oss_key, oss_url,
   thumbnail_url, preview_url,
   status, reject_reason,
@@ -78,6 +89,18 @@ export async function listPhotos({ status, category, keyword, page = 1, pageSize
     rows = r
   } catch (err) {
     if (err.code === 'ER_BAD_FIELD_ERROR') {
+      // 兼容老库没有 views 列：用 legacy select 退化，并补 views=0
+      if ((err.message || '').includes('views')) {
+        const [r] = await pool.query(
+          `SELECT ${PHOTOS_SELECT_FULL_LEGACY_NO_VIEWS}
+           FROM photos
+           ${whereSql}
+           ${orderBy}
+           LIMIT ? OFFSET ?`,
+          [...params, ...orderParams, Number(pageSize), offset],
+        )
+        rows = (r || []).map((row) => ({ ...row, likes: row.likes ?? 0, views: 0 }))
+      } else {
       const whereMinimal = []
       const paramsMinimal = []
       if (status) {
@@ -99,17 +122,35 @@ export async function listPhotos({ status, category, keyword, page = 1, pageSize
       countWhereSql = whereMinimal.length ? `WHERE ${whereMinimal.join(' AND ')}` : ''
       countParams = paramsMinimal
       const fallbackOrder = orderBy || 'ORDER BY COALESCE(shot_date, created_at) DESC'
-      const [r] = await pool.query(
-        `SELECT ${PHOTOS_SELECT_MINIMAL}
-         FROM photos
-         ${countWhereSql}
-         ${fallbackOrder}
-         LIMIT ? OFFSET ?`,
-        [...countParams, ...orderParams, Number(pageSize), offset],
-      )
+      let r
+      try {
+        ;[r] = await pool.query(
+          `SELECT ${PHOTOS_SELECT_MINIMAL}
+           FROM photos
+           ${countWhereSql}
+           ${fallbackOrder}
+           LIMIT ? OFFSET ?`,
+          [...countParams, ...orderParams, Number(pageSize), offset],
+        )
+      } catch (err2) {
+        if (err2.code === 'ER_BAD_FIELD_ERROR' && (err2.message || '').includes('views')) {
+          ;[r] = await pool.query(
+            `SELECT ${PHOTOS_SELECT_MINIMAL_LEGACY_NO_VIEWS}
+             FROM photos
+             ${countWhereSql}
+             ${fallbackOrder}
+             LIMIT ? OFFSET ?`,
+            [...countParams, ...orderParams, Number(pageSize), offset],
+          )
+          r = (r || []).map((row) => ({ ...row, views: 0 }))
+        } else {
+          throw err2
+        }
+      }
       rows = (r || []).map((row) => ({
         ...row,
         likes: row.likes ?? 0,
+        views: row.views ?? 0,
         hidden: 0,
         focal_length: null,
         aperture: null,
@@ -118,6 +159,7 @@ export async function listPhotos({ status, category, keyword, page = 1, pageSize
         camera: null,
         lens: null,
       }))
+      }
     } else {
       throw err
     }
@@ -361,21 +403,52 @@ export async function getPhotoById(id, options = {}) {
     row = rows[0] || null
   } catch (err) {
     if (err.code === 'ER_BAD_FIELD_ERROR') {
-      const [rows] = await pool.query(
-        `SELECT ${PHOTOS_SELECT_MINIMAL}
-         FROM photos
-         WHERE id = ?
-         LIMIT 1`,
-        [id],
-      )
-      const r = rows[0] || null
-      row = r ? { ...r, likes: r.likes ?? 0, hidden: 0, focal_length: null, aperture: null, shutter_speed: null, iso: null, camera: null, lens: null } : null
+      // 兼容老库没有 views 列：用 legacy select 退化，并补 views=0
+      if ((err.message || '').includes('views')) {
+        const [rows] = await pool.query(
+          `SELECT ${PHOTOS_SELECT_FULL_LEGACY_NO_VIEWS}
+           FROM photos
+           WHERE id = ?
+           LIMIT 1`,
+          [id],
+        )
+        const r = rows[0] || null
+        row = r ? { ...r, likes: r.likes ?? 0, views: 0 } : null
+      } else {
+        let rows
+        try {
+          ;[rows] = await pool.query(
+            `SELECT ${PHOTOS_SELECT_MINIMAL}
+             FROM photos
+             WHERE id = ?
+             LIMIT 1`,
+            [id],
+          )
+        } catch (err2) {
+          if (err2.code === 'ER_BAD_FIELD_ERROR' && (err2.message || '').includes('views')) {
+            ;[rows] = await pool.query(
+              `SELECT ${PHOTOS_SELECT_MINIMAL_LEGACY_NO_VIEWS}
+               FROM photos
+               WHERE id = ?
+               LIMIT 1`,
+              [id],
+            )
+            rows = (rows || []).map((r) => ({ ...r, views: 0 }))
+          } else {
+            throw err2
+          }
+        }
+        const r = rows[0] || null
+        row = r ? { ...r, likes: r.likes ?? 0, views: r.views ?? 0, hidden: 0, focal_length: null, aperture: null, shutter_speed: null, iso: null, camera: null, lens: null } : null
+      }
     } else {
       throw err
     }
   }
   if (!row) return null
   if (options.publicOnly && (row.status !== 'approved' || (row.hidden != null && row.hidden !== 0))) return null
+  row.likes = row.likes ?? 0
+  row.views = row.views ?? 0
   return row
 }
 
@@ -399,6 +472,32 @@ export async function incrementPhotoLike(id) {
   } catch (err) {
     if (err.code === 'ER_BAD_FIELD_ERROR') {
       return (photo.likes ?? 0)
+    }
+    throw err
+  }
+}
+
+/** 浏览量 +1：仅对已审核且未隐藏的照片有效，返回新的 views 数 */
+export async function incrementPhotoView(id) {
+  const pool = getDbPool()
+  const photo = await getPhotoById(id, { publicOnly: true })
+  if (!photo) {
+    const err = new Error('照片不存在')
+    err.status = 404
+    throw err
+  }
+  try {
+    const [result] = await pool.query(
+      'UPDATE photos SET views = COALESCE(views, 0) + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [id],
+    )
+    if (result.affectedRows === 0) return (photo.views ?? 0)
+    const [[row]] = await pool.query('SELECT COALESCE(views, 0) AS views FROM photos WHERE id = ?', [id])
+    return Number(row?.views) || (photo.views ?? 0) + 1
+  } catch (err) {
+    if (err.code === 'ER_BAD_FIELD_ERROR') {
+      // 老库没 views 列：退化为不计数
+      return (photo.views ?? 0)
     }
     throw err
   }
@@ -548,4 +647,92 @@ export async function deletePhoto(id) {
     throw err
   }
   return { deleted: true, id: Number(id) }
+}
+
+// ---------------------------
+// 评论相关
+// ---------------------------
+
+export async function listPhotoComments(photoId, { limit = 100 } = {}) {
+  const pool = getDbPool()
+  const n = Math.min(Math.max(Number(limit) || 100, 1), 200)
+  const [rows] = await pool.query(
+    `SELECT id, photo_id, user_id, author, author_ip, content, created_at
+     FROM photo_comments
+     WHERE photo_id = ?
+     ORDER BY created_at ASC
+     LIMIT ?`,
+    [photoId, n],
+  )
+  return rows || []
+}
+
+export async function createPhotoComment(photoId, payload, meta = {}) {
+  const pool = getDbPool()
+  const { author, content } = payload || {}
+  const { userId, username, ip } = meta || {}
+
+  const trimmed = typeof content === 'string' ? content.trim() : ''
+  if (!trimmed) {
+    const err = new Error('评论内容不能为空')
+    err.status = 400
+    throw err
+  }
+  if (trimmed.length > 1000) {
+    const err = new Error('评论内容过长（最多 1000 字）')
+    err.status = 400
+    throw err
+  }
+
+  // 确保照片存在；允许对后台可见的所有照片评论
+  const photo = await getPhotoById(photoId, { publicOnly: false })
+  if (!photo) {
+    const err = new Error('照片不存在或不可评论')
+    err.status = 404
+    throw err
+  }
+
+  const safeAuthor = typeof author === 'string' ? author.trim().slice(0, 64) : ''
+  const finalAuthor = safeAuthor || (typeof username === 'string' ? username.trim().slice(0, 64) : '') || null
+  const finalUserId = userId != null ? (Number(userId) || null) : null
+  const finalIp = typeof ip === 'string' ? ip.slice(0, 45) : null
+
+  const [result] = await pool.query(
+    `INSERT INTO photo_comments (photo_id, user_id, author, author_ip, content)
+     VALUES (?, ?, ?, ?, ?)`,
+    [photoId, finalUserId, finalAuthor, finalIp, trimmed],
+  )
+
+  const [rows] = await pool.query(
+    `SELECT id, photo_id, user_id, author, author_ip, content, created_at
+     FROM photo_comments
+     WHERE id = ?
+     LIMIT 1`,
+    [result.insertId],
+  )
+  return rows[0] || null
+}
+
+export async function deletePhotoComment(photoId, commentId) {
+  const pool = getDbPool()
+  const [rows] = await pool.query(
+    'SELECT id, photo_id FROM photo_comments WHERE id = ? LIMIT 1',
+    [commentId],
+  )
+  const comment = rows[0]
+  if (!comment || String(comment.photo_id) !== String(photoId)) {
+    const err = new Error('评论不存在')
+    err.status = 404
+    throw err
+  }
+  const [result] = await pool.query(
+    'DELETE FROM photo_comments WHERE id = ?',
+    [commentId],
+  )
+  if (result.affectedRows === 0) {
+    const err = new Error('评论不存在')
+    err.status = 404
+    throw err
+  }
+  return { deleted: true, id: Number(commentId) }
 }

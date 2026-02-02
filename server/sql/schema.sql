@@ -3,8 +3,10 @@
 CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL UNIQUE,
+  email VARCHAR(128) NULL,
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('admin', 'viewer') NOT NULL DEFAULT 'admin',
+  status ENUM('active', 'banned') NOT NULL DEFAULT 'active',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
@@ -26,6 +28,7 @@ CREATE TABLE IF NOT EXISTS photos (
   oss_url VARCHAR(1024) NULL,
   thumbnail_url VARCHAR(1024) NULL,
   preview_url VARCHAR(1024) NULL,
+  views BIGINT UNSIGNED NOT NULL DEFAULT 0,
   status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
   reject_reason VARCHAR(255) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -33,7 +36,8 @@ CREATE TABLE IF NOT EXISTS photos (
   PRIMARY KEY (id),
   KEY idx_status (status),
   KEY idx_category (category),
-  KEY idx_shot_date (shot_date)
+  KEY idx_shot_date (shot_date),
+  KEY idx_views (views)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS app_settings (
@@ -41,6 +45,21 @@ CREATE TABLE IF NOT EXISTS app_settings (
   config_value TEXT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (config_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 评论表：每张照片的评论
+CREATE TABLE IF NOT EXISTS photo_comments (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  photo_id BIGINT UNSIGNED NOT NULL,
+  user_id INT UNSIGNED NULL,
+  author VARCHAR(64) NULL,
+  author_ip VARCHAR(45) NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_photo_id_created_at (photo_id, created_at),
+  CONSTRAINT fk_photo_comments_photo_id FOREIGN KEY (photo_id) REFERENCES photos(id) ON DELETE CASCADE,
+  CONSTRAINT fk_photo_comments_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 默认管理员账号（请在生产环境中修改密码）

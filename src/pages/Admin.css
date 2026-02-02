@@ -210,7 +210,12 @@
   font-family: inherit;
   border-radius: var(--radius-full);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s var(--ease-out);
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.25s var(--ease-out),
+    transform 0.25s var(--ease-spring);
   box-shadow: var(--shadow-sm);
 }
 
@@ -229,6 +234,7 @@
   color: #fff;
   border-color: var(--text);
   box-shadow: var(--shadow-md);
+  transform: translateY(var(--lift-y));
 }
 
 .admin-content {
@@ -237,6 +243,165 @@
   gap: 24px;
   margin-top: 4px;
 }
+
+.admin-review-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.admin-review-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: nowrap;
+  margin: 2px 0 12px;
+}
+
+.admin-review-select-wrap {
+  width: auto;
+}
+
+.admin-review-select-wrap--sort {
+  max-width: 260px;
+}
+
+.admin-review-select-wrap--page {
+  max-width: 140px;
+}
+
+.admin-review-toolbar .p4p-select {
+  width: 100%;
+}
+
+.admin-review-toolbar .p4p-select-trigger {
+  padding: 10px 44px 10px 14px;
+  border-radius: var(--radius-full);
+  background: var(--bg-soft);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-review-toolbar .p4p-select-trigger:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text);
+  border-color: var(--border-medium);
+}
+
+.admin-review-toolbar .p4p-select-popover {
+  border-radius: var(--radius);
+}
+
+@media (max-width: 900px) {
+  .admin-review-toolbar {
+    flex-wrap: wrap;
+  }
+  .admin-review-select-wrap,
+  .admin-review-select-wrap--sort,
+  .admin-review-select-wrap--page {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.admin-review-search {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-full);
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s, color 0.2s;
+}
+
+.admin-review-search:focus {
+  outline: none;
+  border-color: var(--theme-color);
+  box-shadow: 0 0 0 3px var(--theme-color-25);
+}
+
+/* admin-review-select 已由自定义 Select 组件替代 */
+
+.admin-review-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 12px;
+}
+
+.admin-review-pager-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.admin-review-pager-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-review-pager-btn {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.2s var(--ease-out);
+}
+
+.admin-review-pager-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text);
+  transform: translateY(var(--lift-y));
+}
+
+.admin-review-pager-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.section-title--toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  justify-content: space-between;
+}
+
+.section-title__left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.section-title__chevron {
+  color: var(--muted);
+  transition: transform 0.2s var(--ease-out), color 0.2s var(--ease-out);
+  flex-shrink: 0;
+  transform: rotate(0deg);
+}
+
+.section-title__chevron.is-open {
+  transform: rotate(90deg);
+  color: var(--text-secondary);
+}
+
+/* 侧边栏导航已移除：保持单列即可 */
 
 .upload-section,
 .form-section,
@@ -273,9 +438,7 @@
 }
 
 .photo-list-section--hidden {
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border-subtle);
+  border-style: dashed;
 }
 
 .upload-dropzone {

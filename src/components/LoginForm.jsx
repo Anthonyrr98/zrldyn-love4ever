@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { apiRequest, saveAuth, clearAuth, loadAuth } from '../utils/apiClient'
 import './LoginForm.css'
 
-function LoginForm({ onLogin, expiredMessage = '' }) {
+function LoginForm({ onLogin, expiredMessage = '', mode = 'admin', onSwitchToRegister }) {
   const { user: storedUser } = loadAuth()
   const [username, setUsername] = useState(storedUser?.username || '')
   const [password, setPassword] = useState('')
@@ -41,8 +41,10 @@ function LoginForm({ onLogin, expiredMessage = '' }) {
   return (
     <div className="login-card">
       <div className="login-header">
-        <div className="login-title">管理员登录</div>
-        <div className="login-subtitle">仅限后台管理使用</div>
+        <div className="login-title">{mode === 'admin' ? '管理员登录' : '登录'}</div>
+        <div className="login-subtitle">
+          {mode === 'admin' ? '仅限后台管理使用' : '登录后可进行评论和点赞'}
+        </div>
       </div>
       <form onSubmit={handleSubmit} className="login-form">
         <div className="login-field">
@@ -51,7 +53,7 @@ function LoginForm({ onLogin, expiredMessage = '' }) {
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="admin"
+            placeholder=""
           />
         </div>
         <div className="login-field">
@@ -61,7 +63,7 @@ function LoginForm({ onLogin, expiredMessage = '' }) {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder=""
               className="login-password-input"
             />
             <button
@@ -89,6 +91,17 @@ function LoginForm({ onLogin, expiredMessage = '' }) {
         <button type="submit" className="login-submit" disabled={loading}>
           {loading ? '登录中...' : '登录'}
         </button>
+        {mode !== 'admin' && (
+          <div className="login-footer login-footer--right">
+            <button
+              type="button"
+              className="login-footer-link"
+              onClick={() => onSwitchToRegister && onSwitchToRegister()}
+            >
+              还没有账号？去注册
+            </button>
+          </div>
+        )}
       </form>
     </div>
   )

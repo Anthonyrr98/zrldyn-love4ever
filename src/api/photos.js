@@ -28,3 +28,27 @@ export function likePhoto(id) {
 export function unlikePhoto(id) {
   return apiRequest(`/api/photos/${id}/unlike`, { method: 'POST', body: '{}' })
 }
+
+export function recordPhotoView(id) {
+  return apiRequest(`/api/photos/${id}/view`, { method: 'POST', body: '{}' })
+}
+
+export function listPhotoComments(photoId, params = {}) {
+  const sp = new URLSearchParams()
+  if (params.limit != null) sp.set('limit', String(params.limit))
+  const qs = sp.toString()
+  return apiRequest(`/api/photos/${photoId}/comments${qs ? `?${qs}` : ''}`)
+}
+
+export function createPhotoComment(photoId, payload) {
+  return apiRequest(`/api/photos/${photoId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  })
+}
+
+export function deletePhotoComment(photoId, commentId) {
+  return apiRequest(`/api/photos/${photoId}/comments/${commentId}`, {
+    method: 'DELETE',
+  })
+}

@@ -9,7 +9,11 @@ import {
   deletePhoto,
   incrementPhotoLike,
   decrementPhotoLike,
+  incrementPhotoView,
   getLocationHierarchy,
+  listPhotoComments,
+  createPhotoComment,
+  deletePhotoComment,
 } from '../services/photoService.js'
 import { uploadBufferToOss } from '../services/ossService.js'
 
@@ -75,6 +79,77 @@ export async function getById(req, res, next) {
     const photo = await getPhotoById(req.params.id, { publicOnly: !req.user })
     if (!photo) return res.status(404).json({ message: '照片不存在' })
     res.json(photo)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function view(req, res, next) {
+  try {
+    const views = await incrementPhotoView(req.params.id)
+    res.json({ views })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getComments(req, res, next) {
+  try {
+    const items = await listPhotoComments(req.params.id, { limit: Number(req.query.limit) || 100 })
+    res.json({ items })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function createComment(req, res, next) {
+  try {
+    const payload = req.body || {}
+    const normalizeIp = (raw) => {
+      if (!raw) return null
+      let s = String(raw).trim()
+      if (!s) return null
+      // If forwarded list, keep the first hop.
+      if (s.includes(',')) s = s.split(',')[0].trim()
+      // Handle bracketed IPv6 like: [2001:db8::1]:1234
+      if (s.startsWith('[') && s.includes(']')) {
+        const inside = s.slice(1, s.indexOf(']'))
+        s = inside || s
+      }
+      // Drop port for IPv4 like: 1.2.3.4:1234
+      if (s.includes('.') && s.includes(':') && !s.includes('::')) {
+        s = s.split(':')[0].trim()
+      }
+      // Normalize IPv6-mapped IPv4: ::ffff:1.2.3.4
+      if (s.startsWith('::ffff:')) s = s.slice('::ffff:'.length).trim()
+      // Strip zone id if any: fe80::1%lo0
+      if (s.includes('%')) s = s.split('%')[0].trim()
+      return s || null
+    }
+
+    const ipHeader = req.headers['x-forwarded-for'] || req.headers['x-real-ip']
+    const rawIp = Array.isArray(ipHeader)
+      ? ipHeader[0]
+      : typeof ipHeader === 'string'
+        ? ipHeader
+        : (req.ip || req.connection?.remoteAddress || null)
+    const ip = normalizeIp(rawIp)
+    const created = await createPhotoComment(req.params.id, payload, {
+      userId: req.user?.id ?? null,
+      username: req.user?.username ?? null,
+      ip: ip || null,
+    })
+    res.status(201).json(created)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function deleteComment(req, res, next) {
+  try {
+    const { photoId, commentId } = req.params
+    const result = await deletePhotoComment(photoId, commentId)
+    res.json(result)
   } catch (err) {
     next(err)
   }

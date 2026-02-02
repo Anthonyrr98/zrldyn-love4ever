@@ -62,6 +62,15 @@ function Admin() {
   const [photosError, setPhotosError] = useState('')
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 })
   const [statsLoading, setStatsLoading] = useState(false)
+  const [reviewPanelsOpen, setReviewPanelsOpen] = useState({
+    uploaded: true,
+    hidden: false,
+  })
+  const [reviewListQuery, setReviewListQuery] = useState('')
+  const [reviewListSort, setReviewListSort] = useState('updated_desc') // updated_desc | views_desc | likes_desc | title_asc
+  const [reviewPageSize, setReviewPageSize] = useState(20)
+  const [reviewUploadedPage, setReviewUploadedPage] = useState(1)
+  const [reviewHiddenPage, setReviewHiddenPage] = useState(1)
   const [submitLoading, setSubmitLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(null) // 0-100, null 表示未在上传
@@ -338,6 +347,61 @@ function Admin() {
       setPhotosLoading(false)
     }
   }
+
+  const normalizeSearchText = (s) => String(s || '').trim().toLowerCase()
+  const matchesQuery = useCallback((photo, q) => {
+    const query = normalizeSearchText(q)
+    if (!query) return true
+    const hay = [
+      photo.title,
+      photo.location_city,
+      photo.location_province,
+      photo.location_country,
+      photo.tags,
+    ].filter(Boolean).join(' ').toLowerCase()
+    return hay.includes(query)
+  }, [])
+
+  const sortPhotosForReview = useCallback((list, sortKey) => {
+    const arr = [...(list || [])].map((p) => ({
+      ...p,
+      views: p.views ?? 0,
+      likes: p.likes ?? 0,
+      updated_at: p.updated_at || p.created_at,
+    }))
+    if (sortKey === 'views_desc') {
+      arr.sort((a, b) => (b.views - a.views) || (b.likes - a.likes) || (new Date(b.updated_at) - new Date(a.updated_at)))
+    } else if (sortKey === 'likes_desc') {
+      arr.sort((a, b) => (b.likes - a.likes) || (b.views - a.views) || (new Date(b.updated_at) - new Date(a.updated_at)))
+    } else if (sortKey === 'title_asc') {
+      arr.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'zh-CN'))
+    } else {
+      // updated_desc
+      arr.sort((a, b) => (new Date(b.updated_at) - new Date(a.updated_at)) || (b.views - a.views) || (b.likes - a.likes))
+    }
+    return arr
+  }, [])
+
+  const clampPage = (p, totalPages) => Math.min(Math.max(Number(p) || 1, 1), Math.max(totalPages, 1))
+
+  const reviewSortOptions = [
+    { value: 'updated_desc', label: '按更新时间（新→旧）' },
+    { value: 'views_desc', label: '按浏览量（高→低）' },
+    { value: 'likes_desc', label: '按点赞（高→低）' },
+    { value: 'title_asc', label: '按标题（A→Z）' },
+  ]
+  const reviewPageSizeOptions = [
+    { value: '20', label: '20 / 页' },
+    { value: '25', label: '25 / 页' },
+    { value: '50', label: '50 / 页' },
+    { value: '100', label: '100 / 页' },
+  ]
+
+  useEffect(() => {
+    // 搜索/排序/每页数量变化时回到第一页
+    setReviewUploadedPage(1)
+    setReviewHiddenPage(1)
+  }, [reviewListQuery, reviewListSort, reviewPageSize])
 
   // 分类管理
   const loadCategories = useCallback(async () => {
@@ -817,6 +881,31 @@ function Admin() {
     )
   }
 
+  if (user?.role !== 'admin') {
+    return (
+      <div className="admin-page admin-page--login">
+        <div className="admin-container admin-container--login">
+          <div className="login-card">
+            <div className="login-header">
+              <div className="login-title">无权限访问</div>
+              <div className="login-subtitle">当前账号不是管理员，请使用管理员账号登录后台</div>
+            </div>
+            <button
+              type="button"
+              className="login-submit"
+              onClick={() => {
+                clearAuth()
+                setAuthState(loadAuth())
+              }}
+            >
+              退出当前账号
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="admin-page">
       <div className="admin-container">
@@ -1202,8 +1291,29 @@ function Admin() {
 
         {activeTab === 'reviewed' && (
           <div className="admin-content">
-            <div className="photo-list-section">
-              <div className="section-title">
+            <div className="admin-review-main">
+              {(() => {
+                const navId = 'uploaded'
+                  const uploadedAll = sortPhotosForReview(
+                    photos.filter((p) => !p.hidden).filter((p) => matchesQuery(p, reviewListQuery)),
+                    reviewListSort,
+                  )
+                  const uploadedTotal = uploadedAll.length
+                  const uploadedTotalPages = Math.ceil(uploadedTotal / Number(reviewPageSize || 50)) || 1
+                  const uploadedPage = clampPage(reviewUploadedPage, uploadedTotalPages)
+                  const uploadedStart = (uploadedPage - 1) * Number(reviewPageSize || 50)
+                  const uploadedPageItems = uploadedAll.slice(uploadedStart, uploadedStart + Number(reviewPageSize || 50))
+                  return (
+                    <div key="uploaded" className="photo-list-section" id="admin-review-uploaded">
+
+                <button
+                  type="button"
+                  className="section-title section-title--toggle"
+                  onClick={() => setReviewPanelsOpen((p) => ({ ...p, uploaded: !p.uploaded }))}
+                  aria-expanded={!!reviewPanelsOpen.uploaded}
+                  aria-controls="admin-review-uploaded-body"
+                >
+                  <span className="section-title__left">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                   <path d="M4 4h12v12H4V4z" stroke="currentColor" strokeWidth="1.5" fill="none"/>
                   <path d="M6 6h8M6 9h8M6 12h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -1212,59 +1322,136 @@ function Admin() {
                 {!photosLoading && !photosError && (
                   <span className="section-title-count">（{photos.filter((p) => !p.hidden).length}）</span>
                 )}
-              </div>
+                  </span>
+                  <svg className={`section-title__chevron ${reviewPanelsOpen.uploaded ? 'is-open' : ''}`} width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
+                    <path d="M7.5 5l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
 
-              {photosLoading ? (
-                <div className="photo-list-loading">
-                  <div className="loading-spinner"></div>
-                  <span>加载中...</span>
-                </div>
-              ) : photosError ? (
-                <div className="photo-list-error">{photosError}</div>
-              ) : photos.filter((p) => !p.hidden).length === 0 ? (
-                <div className="photo-list-empty">暂无数据</div>
-              ) : (
-                <div className="photo-list">
-                  {photos.filter((p) => !p.hidden).map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="photo-list-item"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => openEditPhoto(photo)}
-                      onKeyDown={(e) => e.key === 'Enter' && openEditPhoto(photo)}
-                      title="点击编辑该照片信息"
-                    >
-                      <div className="photo-list-image">
-                        {(photo.thumbnail_url || photo.preview_url || photo.oss_url) ? (
-                          <img src={photo.thumbnail_url || photo.preview_url || photo.oss_url} alt={photo.title} loading="lazy" />
-                        ) : (
-                          <div className="photo-list-placeholder">无图片</div>
-                        )}
+                {reviewPanelsOpen.uploaded && (
+                  <div id="admin-review-uploaded-body">
+                    <div className="admin-review-toolbar">
+                      <input
+                        className="admin-review-search"
+                        type="search"
+                        value={reviewListQuery}
+                        onChange={(e) => setReviewListQuery(e.target.value)}
+                        placeholder="搜索标题 / 地点 / 标签…"
+                      />
+                      <div className="admin-review-select-wrap admin-review-select-wrap--sort">
+                        <Select
+                          value={reviewListSort}
+                          onChange={(next) => setReviewListSort(next)}
+                          options={reviewSortOptions}
+                        />
                       </div>
-                      <div className="photo-list-info">
-                        <div className="photo-list-title">{photo.title}</div>
-                        <div className="photo-list-meta">
-                          <span>{photo.location_city || '-'}</span>
-                          <span>·</span>
-                          <span>{photo.location_country || '-'}</span>
-                          <span>·</span>
-                          <span>{formatDate(photo.shot_date)}</span>
-                        </div>
-                        <div className="photo-list-tags">
-                          {photo.tags && (
-                            <span className="photo-tag-badge">{photo.tags}</span>
-                          )}
-                        </div>
+                      <div className="admin-review-select-wrap admin-review-select-wrap--page">
+                        <Select
+                          value={String(reviewPageSize)}
+                          onChange={(next) => setReviewPageSize(Number(next) || 20)}
+                          options={reviewPageSizeOptions}
+                        />
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <div className="admin-review-pager">
+                      <span className="admin-review-pager-text">
+                        共 {uploadedTotal} 条 · 第 {uploadedPage} / {uploadedTotalPages} 页
+                      </span>
+                      <div className="admin-review-pager-actions">
+                        <button
+                          type="button"
+                          className="admin-review-pager-btn"
+                          onClick={() => setReviewUploadedPage((p) => clampPage(p - 1, uploadedTotalPages))}
+                          disabled={uploadedPage <= 1}
+                        >
+                          上一页
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-review-pager-btn"
+                          onClick={() => setReviewUploadedPage((p) => clampPage(p + 1, uploadedTotalPages))}
+                          disabled={uploadedPage >= uploadedTotalPages}
+                        >
+                          下一页
+                        </button>
+                      </div>
+                    </div>
+                    {photosLoading ? (
+                      <div className="photo-list-loading">
+                        <div className="loading-spinner"></div>
+                        <span>加载中...</span>
+                      </div>
+                    ) : photosError ? (
+                      <div className="photo-list-error">{photosError}</div>
+                    ) : uploadedTotal === 0 ? (
+                      <div className="photo-list-empty">暂无数据</div>
+                    ) : (
+                      <div className="photo-list">
+                        {uploadedPageItems.map((photo) => (
+                          <div
+                            key={photo.id}
+                            className="photo-list-item"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openEditPhoto(photo)}
+                            onKeyDown={(e) => e.key === 'Enter' && openEditPhoto(photo)}
+                            title="点击编辑该照片信息"
+                          >
+                            <div className="photo-list-image">
+                              {(photo.thumbnail_url || photo.preview_url || photo.oss_url) ? (
+                                <img src={photo.thumbnail_url || photo.preview_url || photo.oss_url} alt={photo.title} loading="lazy" />
+                              ) : (
+                                <div className="photo-list-placeholder">无图片</div>
+                              )}
+                            </div>
+                            <div className="photo-list-info">
+                              <div className="photo-list-title">{photo.title}</div>
+                              <div className="photo-list-meta">
+                                <span>{photo.location_city || '-'}</span>
+                                <span>·</span>
+                                <span>{photo.location_country || '-'}</span>
+                                <span>·</span>
+                                <span>{formatDate(photo.shot_date)}</span>
+                              </div>
+                              <div className="photo-list-tags">
+                                {photo.tags && (
+                                  <span className="photo-tag-badge">{photo.tags}</span>
+                                )}
+                                <span className="photo-tag-badge">浏览 {photo.views ?? 0}</span>
+                                <span className="photo-tag-badge">点赞 {photo.likes ?? 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                    </div>
+                  )
+              })()}
+              {(() => {
+                const navId = 'hidden'
+                  const hiddenAll = sortPhotosForReview(
+                    photos.filter((p) => p.hidden).filter((p) => matchesQuery(p, reviewListQuery)),
+                    reviewListSort,
+                  )
+                  const hiddenTotal = hiddenAll.length
+                  const hiddenTotalPages = Math.ceil(hiddenTotal / Number(reviewPageSize || 50)) || 1
+                  const hiddenPage = clampPage(reviewHiddenPage, hiddenTotalPages)
+                  const hiddenStart = (hiddenPage - 1) * Number(reviewPageSize || 50)
+                  const hiddenPageItems = hiddenAll.slice(hiddenStart, hiddenStart + Number(reviewPageSize || 50))
+                  return (
+                    <div key="hidden" className="photo-list-section photo-list-section--hidden" id="admin-review-hidden">
 
-            <div className="photo-list-section photo-list-section--hidden">
-              <div className="section-title">
+                <button
+                  type="button"
+                  className="section-title section-title--toggle"
+                  onClick={() => setReviewPanelsOpen((p) => ({ ...p, hidden: !p.hidden }))}
+                  aria-expanded={!!reviewPanelsOpen.hidden}
+                  aria-controls="admin-review-hidden-body"
+                >
+                  <span className="section-title__left">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                   <path d="M3 10h14M10 3v14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   <path d="M4 4l12 12M16 4L4 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -1273,48 +1460,107 @@ function Admin() {
                 {!photosLoading && !photosError && (
                   <span className="section-title-count">（{photos.filter((p) => p.hidden).length}）</span>
                 )}
-              </div>
+                  </span>
+                  <svg className={`section-title__chevron ${reviewPanelsOpen.hidden ? 'is-open' : ''}`} width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
+                    <path d="M7.5 5l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
 
-              {photosLoading ? null : photosError ? null : photos.filter((p) => p.hidden).length === 0 ? (
-                <div className="photo-list-empty">暂无隐藏作品</div>
-              ) : (
-                <div className="photo-list">
-                  {photos.filter((p) => p.hidden).map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="photo-list-item"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => openEditPhoto(photo)}
-                      onKeyDown={(e) => e.key === 'Enter' && openEditPhoto(photo)}
-                      title="点击编辑该照片信息"
-                    >
-                      <div className="photo-list-image">
-                        {(photo.thumbnail_url || photo.preview_url || photo.oss_url) ? (
-                          <img src={photo.thumbnail_url || photo.preview_url || photo.oss_url} alt={photo.title} loading="lazy" />
-                        ) : (
-                          <div className="photo-list-placeholder">无图片</div>
-                        )}
+                {reviewPanelsOpen.hidden && (
+                  <div id="admin-review-hidden-body">
+                    <div className="admin-review-toolbar">
+                      <input
+                        className="admin-review-search"
+                        type="search"
+                        value={reviewListQuery}
+                        onChange={(e) => setReviewListQuery(e.target.value)}
+                        placeholder="搜索标题 / 地点 / 标签…"
+                      />
+                      <div className="admin-review-select-wrap admin-review-select-wrap--sort">
+                        <Select
+                          value={reviewListSort}
+                          onChange={(next) => setReviewListSort(next)}
+                          options={reviewSortOptions}
+                        />
                       </div>
-                      <div className="photo-list-info">
-                        <div className="photo-list-title">{photo.title}</div>
-                        <div className="photo-list-meta">
-                          <span>{photo.location_city || '-'}</span>
-                          <span>·</span>
-                          <span>{photo.location_country || '-'}</span>
-                          <span>·</span>
-                          <span>{formatDate(photo.shot_date)}</span>
-                        </div>
-                        <div className="photo-list-tags">
-                          {photo.tags && (
-                            <span className="photo-tag-badge">{photo.tags}</span>
-                          )}
-                        </div>
+                      <div className="admin-review-select-wrap admin-review-select-wrap--page">
+                        <Select
+                          value={String(reviewPageSize)}
+                          onChange={(next) => setReviewPageSize(Number(next) || 20)}
+                          options={reviewPageSizeOptions}
+                        />
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="admin-review-pager">
+                      <span className="admin-review-pager-text">
+                        共 {hiddenTotal} 条 · 第 {hiddenPage} / {hiddenTotalPages} 页
+                      </span>
+                      <div className="admin-review-pager-actions">
+                        <button
+                          type="button"
+                          className="admin-review-pager-btn"
+                          onClick={() => setReviewHiddenPage((p) => clampPage(p - 1, hiddenTotalPages))}
+                          disabled={hiddenPage <= 1}
+                        >
+                          上一页
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-review-pager-btn"
+                          onClick={() => setReviewHiddenPage((p) => clampPage(p + 1, hiddenTotalPages))}
+                          disabled={hiddenPage >= hiddenTotalPages}
+                        >
+                          下一页
+                        </button>
+                      </div>
+                    </div>
+                    {photosLoading ? null : photosError ? null : hiddenTotal === 0 ? (
+                      <div className="photo-list-empty">暂无隐藏作品</div>
+                    ) : (
+                      <div className="photo-list">
+                        {hiddenPageItems.map((photo) => (
+                          <div
+                            key={photo.id}
+                            className="photo-list-item"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openEditPhoto(photo)}
+                            onKeyDown={(e) => e.key === 'Enter' && openEditPhoto(photo)}
+                            title="点击编辑该照片信息"
+                          >
+                            <div className="photo-list-image">
+                              {(photo.thumbnail_url || photo.preview_url || photo.oss_url) ? (
+                                <img src={photo.thumbnail_url || photo.preview_url || photo.oss_url} alt={photo.title} loading="lazy" />
+                              ) : (
+                                <div className="photo-list-placeholder">无图片</div>
+                              )}
+                            </div>
+                            <div className="photo-list-info">
+                              <div className="photo-list-title">{photo.title}</div>
+                              <div className="photo-list-meta">
+                                <span>{photo.location_city || '-'}</span>
+                                <span>·</span>
+                                <span>{photo.location_country || '-'}</span>
+                                <span>·</span>
+                                <span>{formatDate(photo.shot_date)}</span>
+                              </div>
+                              <div className="photo-list-tags">
+                                {photo.tags && (
+                                  <span className="photo-tag-badge">{photo.tags}</span>
+                                )}
+                                <span className="photo-tag-badge">浏览 {photo.views ?? 0}</span>
+                                <span className="photo-tag-badge">点赞 {photo.likes ?? 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                    </div>
+                  )
+              })()}
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getThumbUrl } from '../utils/imageUrl'
 import { likePhoto, unlikePhoto } from '../api/photos'
+import { loadAuth } from '../api/auth'
 import './PhotoCard.css'
 
 const LIKED_KEY = 'pic4pick_liked'
@@ -45,6 +46,16 @@ function PhotoCard({ photo }) {
     (e) => {
       e.stopPropagation()
       if (liking) return
+
+      const { user } = typeof window !== 'undefined' ? loadAuth() : { user: null }
+      if (!user) {
+        // 未登录：提示并跳转到登录 / 注册页
+        // eslint-disable-next-line no-alert
+        window.alert('登录后才能点赞，请先登录或注册账号。')
+        navigate('/auth')
+        return
+      }
+
       setLiking(true)
       const req = hasLiked ? unlikePhoto(photo.id) : likePhoto(photo.id)
       req.then((res) => {
@@ -63,7 +74,7 @@ function PhotoCard({ photo }) {
         .catch(() => {})
         .finally(() => setLiking(false))
     },
-    [photo.id, hasLiked, liking, likes],
+    [photo.id, hasLiked, liking, likes, navigate],
   )
 
   // 优先使用数据库中的缩略图，否则使用原图生成缩略图

@@ -5,6 +5,7 @@ import Gallery from './pages/Gallery'
 import Discover from './pages/Discover'
 import Admin from './pages/Admin'
 import PhotoDetail from './pages/PhotoDetail'
+import Auth from './pages/Auth'
 import './App.css'
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/discover" element={<Discover />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/photo/:id" element={<PhotoDetail />} />
         </Routes>
       </div>

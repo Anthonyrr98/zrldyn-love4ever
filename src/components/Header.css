@@ -158,6 +158,7 @@
   align-items: center;
   justify-content: center;
   transition: transform 0.2s var(--ease-out);
+  position: relative;
 }
 
 .user-avatar:hover {
@@ -188,4 +189,35 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.user-role-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  border: 2px solid var(--bg-soft);
+  box-shadow: var(--shadow-sm);
+  color: #fff;
+  pointer-events: none;
+}
+
+.user-role-badge--admin {
+  background: rgba(239, 68, 68, 0.92);
+}
+
+.user-role-badge--viewer {
+  background: rgba(71, 85, 105, 0.88);
+}
+
+html[data-theme="dark"] .user-role-badge {
+  border-color: rgba(15, 20, 28, 0.85);
 }
